@@ -24,7 +24,7 @@
     W3C PNG chunks: https://www.w3.org/TR/PNG-Chunks.html
 */
 
-import * as fs from 'fs';
+// import * as fs from 'fs';
 import * as zlib from 'zlib';
 
 type Chunk = { type: string; data: Buffer };

@@ -25,7 +25,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ path:
 
         // Convert to Web ReadableStream
         let webStream: ReadableStream<Uint8Array>;
-        let contentType = objectStat.metaData?.['X-Amz-Meta-Contenttype'] || 'image/jpeg';
+        const contentType = objectStat.metaData?.['X-Amz-Meta-Contenttype'] || 'image/jpeg';
         if (typeof (objectStream as any).toWeb === 'function') {
             webStream = (objectStream as any).toWeb();
         } else {

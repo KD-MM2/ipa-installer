@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { api } from '@/lib/axios-client';
 
 interface UploadSuccessStateProps {
     uploadResult: {
@@ -43,12 +44,10 @@ export default function UploadSuccessState({ uploadResult, onReset }: UploadSucc
 
     // Poll for job status
     useEffect(() => {
-        let pollInterval: NodeJS.Timeout;
-
         const pollStatus = async () => {
             try {
-                const response = await fetch(`/api/status?jobId=${uploadResult.jobId}&buildId=${uploadResult.buildId}`);
-                const data = await response.json();
+                const response = await api.get(`/api/status?jobId=${uploadResult.jobId}&buildId=${uploadResult.buildId}`);
+                const data = response.data;
 
                 if (data.success) {
                     setJobStatus(data.job);
@@ -57,7 +56,9 @@ export default function UploadSuccessState({ uploadResult, onReset }: UploadSucc
 
                     // Stop polling if job is completed or failed
                     if (data.job?.state === 'completed' || data.job?.state === 'failed') {
-                        clearInterval(pollInterval);
+                        if (pollInterval) {
+                            clearInterval(pollInterval);
+                        }
                     }
                 } else {
                     setError(data.error || 'Failed to get status');
@@ -74,7 +75,7 @@ export default function UploadSuccessState({ uploadResult, onReset }: UploadSucc
         pollStatus();
 
         // Then poll every 2 seconds
-        pollInterval = setInterval(pollStatus, 2000);
+        const pollInterval = setInterval(pollStatus, 2000);
 
         return () => {
             if (pollInterval) {
@@ -156,11 +157,11 @@ export default function UploadSuccessState({ uploadResult, onReset }: UploadSucc
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     <div>
                         <span className="text-gray-600">Build ID:</span>
-                        <code className="ml-2 bg-gray-200 px-2 py-1 rounded text-xs">{uploadResult.buildId}</code>
+                        <code className="ml-2 bg-gray-200 px-2 py-1 rounded text-xs text-black">{uploadResult.buildId}</code>
                     </div>
                     <div>
                         <span className="text-gray-600">Job ID:</span>
-                        <code className="ml-2 bg-gray-200 px-2 py-1 rounded text-xs">{uploadResult.jobId}</code>
+                        <code className="ml-2 bg-gray-200 px-2 py-1 rounded text-xs text-black">{uploadResult.jobId}</code>
                     </div>
                     <div>
                         <span className="text-gray-600">Thời gian ước tính:</span>

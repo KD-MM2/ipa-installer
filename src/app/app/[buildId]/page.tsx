@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import Image from 'next/image';
-
+import QRCode from 'qrcode';
+import { api } from '@/lib/axios-client';
+import Link from 'next/link';
 interface BuildInfo {
     buildId: string;
     appName: string;
@@ -35,14 +36,15 @@ export default function BuildDetailPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isInstalling, setIsInstalling] = useState(false);
+    const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
 
     useEffect(() => {
         if (!buildId) return;
 
         const fetchBuildInfo = async () => {
             try {
-                const response = await fetch(`/api/status?buildId=${buildId}`);
-                const data = await response.json();
+                const response = await api.get(`/api/status?buildId=${buildId}`);
+                const data = response.data;
 
                 if (data.success && data.build) {
                     setBuild(data.build);
@@ -60,6 +62,27 @@ export default function BuildDetailPage() {
         fetchBuildInfo();
     }, [buildId]);
 
+    useEffect(() => {
+        const generateQRCode = async () => {
+            try {
+                const currentUrl = window.location.href;
+                const qrCodeDataURL = await QRCode.toDataURL(currentUrl, {
+                    width: 200,
+                    margin: 1,
+                    color: {
+                        dark: '#000000',
+                        light: '#FFFFFF'
+                    }
+                });
+                setQrCodeDataUrl(qrCodeDataURL);
+            } catch (err) {
+                console.error('Error generating QR code:', err);
+            }
+        };
+
+        generateQRCode();
+    }, []);
+
     const handleInstall = async () => {
         if (!build) return;
 
@@ -67,18 +90,12 @@ export default function BuildDetailPage() {
 
         try {
             // Increment download count first
-            const downloadResponse = await fetch('/api/download', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    buildId: build.buildId
-                })
+            const downloadResponse = await api.post('/api/download', {
+                buildId: build.buildId
             });
 
-            if (!downloadResponse.ok) {
-                const errorData = await downloadResponse.json();
+            if (downloadResponse.status !== 200) {
+                const errorData = downloadResponse.data;
                 alert(errorData.error || 'Cannot download at this time');
                 return;
             }
@@ -89,7 +106,7 @@ export default function BuildDetailPage() {
             window.location.href = installUrl;
 
             // Update local download count
-            const downloadData = await downloadResponse.json();
+            const downloadData = downloadResponse.data;
             setBuild((prev) =>
                 prev
                     ? {
@@ -162,11 +179,6 @@ export default function BuildDetailPage() {
         }
     };
 
-    const generateQRCode = (): string => {
-        const currentUrl = window.location.href;
-        return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(currentUrl)}`;
-    };
-
     if (loading) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -185,9 +197,9 @@ export default function BuildDetailPage() {
                     <div className="text-6xl mb-4">❌</div>
                     <h1 className="text-2xl font-bold text-gray-900 mb-4">Build không tìm thấy</h1>
                     <p className="text-gray-600 mb-6">{error}</p>
-                    <a href="/" className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <Link href="/" className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                         Về trang chủ
-                    </a>
+                    </Link>
                 </div>
             </div>
         );
@@ -282,7 +294,7 @@ export default function BuildDetailPage() {
                                 </div>
                                 <div className="flex items-start space-x-2">
                                     <span className="font-bold">2.</span>
-                                    <span>Nhấn nút "Cài đặt ứng dụng" bên dưới</span>
+                                    <span>{'Nhấn nút "Cài đặt ứng dụng" bên dưới'}</span>
                                 </div>
                                 <div className="flex items-start space-x-2">
                                     <span className="font-bold">3.</span>
@@ -337,7 +349,13 @@ export default function BuildDetailPage() {
                         <div className="bg-white rounded-lg shadow-sm p-6 text-center">
                             <h3 className="font-semibold text-gray-900 mb-4">📱 QR Code</h3>
                             <div className="flex justify-center mb-4">
-                                <img src={generateQRCode()} alt="QR Code for app download" className="w-32 h-32 border border-gray-200 rounded-lg" />
+                                {qrCodeDataUrl ? (
+                                    <img src={qrCodeDataUrl} alt="QR Code for app download" className="w-32 h-32 border border-gray-200 rounded-lg p-2" />
+                                ) : (
+                                    <div className="w-48 h-48 border border-gray-200 rounded-lg bg-gray-100 flex items-center justify-center">
+                                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-600"></div>
+                                    </div>
+                                )}
                             </div>
                             <p className="text-xs text-gray-500">Quét để mở trang này trên điện thoại</p>
                         </div>
@@ -346,13 +364,13 @@ export default function BuildDetailPage() {
                         <div className="bg-white rounded-lg shadow-sm p-6">
                             <h3 className="font-semibold text-gray-900 mb-4">🔗 Chia sẻ link</h3>
                             <div className="flex space-x-2">
-                                <input type="text" value={typeof window !== 'undefined' ? window.location.href : ''} readOnly className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50" />
+                                <input type="text" value={typeof window !== 'undefined' ? window.location.href : ''} readOnly className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm text-black bg-gray-50" />
                                 <button
                                     onClick={() => {
                                         navigator.clipboard.writeText(window.location.href);
                                         alert('Đã copy link!');
                                     }}
-                                    className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm transition-colors"
+                                    className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-black transition-colors"
                                 >
                                     Copy
                                 </button>
@@ -365,7 +383,7 @@ export default function BuildDetailPage() {
                             <div className="space-y-3 text-sm">
                                 <div>
                                     <span className="text-gray-600">Build ID:</span>
-                                    <code className="ml-2 text-xs bg-gray-100 px-2 py-1 rounded">{build.buildId}</code>
+                                    <code className="ml-2 text-xs bg-gray-100 px-2 py-1 text-black rounded">{build.buildId}</code>
                                 </div>
                                 <div>
                                     <span className="text-gray-600">File name:</span>
@@ -388,10 +406,10 @@ export default function BuildDetailPage() {
 
                 {/* Footer */}
                 <div className="mt-12 text-center">
-                    <a href="/" className="inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors">
+                    <Link href="/" className="inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors">
                         <span>←</span>
                         <span>Về trang chủ</span>
-                    </a>
+                    </Link>
                 </div>
             </div>
         </div>

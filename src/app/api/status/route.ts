@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ success: false, error: 'jobId or buildId is required' }, { status: 400 });
         }
 
-        let response: any = {};
+        const response: any = {};
 
         // Get job status if jobId provided
         if (jobId) {

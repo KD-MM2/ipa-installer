@@ -9,6 +9,7 @@ interface UploadIPAProps {
 export default function UploadIPA({ onUploadSuccess }: UploadIPAProps) {
     const [file, setFile] = useState<File | null>(null);
     const [uploading, setUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
     const [error, setError] = useState<string | null>(null);
     const [dragOver, setDragOver] = useState(false);
 
@@ -71,6 +72,7 @@ export default function UploadIPA({ onUploadSuccess }: UploadIPAProps) {
         }
 
         setUploading(true);
+        setUploadProgress(0);
         setError(null);
 
         try {
@@ -78,15 +80,58 @@ export default function UploadIPA({ onUploadSuccess }: UploadIPAProps) {
             const formData = new FormData();
             formData.append('file', file);
 
-            // Upload file and trigger queue processing
-            const response = await fetch('/api/upload-ipa', {
-                method: 'POST',
-                body: formData
+            // Use XMLHttpRequest for upload progress tracking
+            const xhr = new XMLHttpRequest();
+
+            // Promise wrapper for XMLHttpRequest
+            const uploadPromise = new Promise<any>((resolve, reject) => {
+                // Track upload progress
+                xhr.upload.addEventListener('progress', (event) => {
+                    if (event.lengthComputable) {
+                        const progress = Math.round((event.loaded / event.total) * 100);
+                        setUploadProgress(progress);
+                    }
+                });
+
+                // Handle completion
+                xhr.addEventListener('load', () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        try {
+                            const result = JSON.parse(xhr.responseText);
+                            resolve(result);
+                        } catch {
+                            reject(new Error('Invalid response format'));
+                        }
+                    } else {
+                        try {
+                            const errorResult = JSON.parse(xhr.responseText);
+                            reject(new Error(errorResult.error || `HTTP ${xhr.status}`));
+                        } catch {
+                            reject(new Error(`HTTP ${xhr.status}`));
+                        }
+                    }
+                });
+
+                // Handle network errors
+                xhr.addEventListener('error', () => {
+                    reject(new Error('Network error occurred'));
+                });
+
+                // Handle timeout
+                xhr.addEventListener('timeout', () => {
+                    reject(new Error('Upload timeout'));
+                });
+
+                // Configure and send request
+                xhr.open('POST', '/api/upload');
+                xhr.timeout = 5 * 60 * 1000; // 5 minutes timeout
+                xhr.send(formData);
             });
 
-            const result = await response.json();
+            const result = await uploadPromise;
 
             if (result.success) {
+                setUploadProgress(100);
                 onUploadSuccess?.({
                     buildId: result.buildId,
                     jobId: result.jobId,
@@ -96,6 +141,7 @@ export default function UploadIPA({ onUploadSuccess }: UploadIPAProps) {
                 // Reset form
                 setFile(null);
                 setError(null);
+                setUploadProgress(0);
             } else {
                 setError(result.error || 'Upload thất bại');
             }
@@ -166,6 +212,20 @@ export default function UploadIPA({ onUploadSuccess }: UploadIPAProps) {
                 </div>
             )}
 
+            {/* Upload Progress */}
+            {uploading && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between text-sm">
+                        <span className="text-blue-800 font-medium">Đang upload...</span>
+                        <span className="text-blue-600">{uploadProgress}%</span>
+                    </div>
+                    <div className="w-full bg-blue-200 rounded-full h-2">
+                        <div className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out" style={{ width: `${uploadProgress}%` }}></div>
+                    </div>
+                    {uploadProgress < 100 && <div className="text-xs text-blue-600">{file && `Uploading ${file.name} (${formatFileSize(file.size)})`}</div>}
+                </div>
+            )}
+
             {/* Upload Button */}
             <button
                 onClick={handleUpload}
@@ -178,7 +238,7 @@ export default function UploadIPA({ onUploadSuccess }: UploadIPAProps) {
                 {uploading ? (
                     <div className="flex items-center justify-center space-x-2">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>Đang upload...</span>
+                        <span>{uploadProgress < 100 ? `Uploading ${uploadProgress}%` : 'Processing...'}</span>
                     </div>
                 ) : (
                     'Upload IPA'

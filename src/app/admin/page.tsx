@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { StorageUtils } from '@/lib/storage-utils';
+import { api } from '@/lib/axios-client';
 
 interface Build {
     id: string;
@@ -67,8 +68,8 @@ export default function AdminPage() {
                 ...(statusFilter !== 'all' && { status: statusFilter })
             });
 
-            const response = await fetch(`/api/admin/builds?${params}`);
-            const data = await response.json();
+            const response = await api.get(`/api/admin/builds?${params}`);
+            const data = response.data;
 
             if (data.success) {
                 setBuilds(data.data);
@@ -101,13 +102,11 @@ export default function AdminPage() {
         }
 
         try {
-            const response = await fetch('/api/admin/builds', {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ buildId })
+            const response = await api.delete('/api/admin/builds', {
+                data: { buildId }
             });
 
-            const data = await response.json();
+            const data = response.data;
             if (data.success) {
                 alert('Build đã được lên lịch xóa thành công');
                 fetchBuilds();
@@ -142,7 +141,11 @@ export default function AdminPage() {
         if (!editingBuild) return;
 
         try {
-            const updates: any = {
+            const updates: {
+                status: string;
+                maxDownloads?: number;
+                expiresAt?: string;
+            } = {
                 status: editData.status
             };
 
@@ -154,13 +157,12 @@ export default function AdminPage() {
                 updates.expiresAt = editData.expiresAt;
             }
 
-            const response = await fetch('/api/admin/builds', {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ buildId: editingBuild, updates })
+            const response = await api.patch('/api/admin/builds', {
+                buildId: editingBuild,
+                updates
             });
 
-            const data = await response.json();
+            const data = response.data;
             if (data.success) {
                 alert('Cập nhật thành công');
                 cancelEdit();

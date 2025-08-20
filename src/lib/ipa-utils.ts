@@ -58,7 +58,7 @@ export async function extractIpaMetadata(ipaFilePath: string): Promise<Processed
 
         console.log('📋 Reading Info.plist...');
         const plistContent = fs.readFileSync(infoPlistPath, 'utf8');
-        const parsed = plist.parse(plistContent) as any;
+        const parsed = plist.parse(plistContent) as Record<string, any>;
 
         // Validate required fields
         if (!parsed.CFBundleIdentifier) {
@@ -146,11 +146,13 @@ export function generatePlistContent(metadata: IpaMetadata, ipaUrl: string, icon
                     ...(iconUrl
                         ? [
                               {
-                                  kind: 'display-image',
+                                  kind: 'full-size-image',
+                                  'needs-shine': false,
                                   url: iconUrl
                               },
                               {
-                                  kind: 'full-size-image',
+                                  kind: 'display-image',
+                                  'needs-shine': false,
                                   url: iconUrl
                               }
                           ]
@@ -160,13 +162,14 @@ export function generatePlistContent(metadata: IpaMetadata, ipaUrl: string, icon
                     'bundle-identifier': metadata.bundleId,
                     'bundle-version': metadata.version,
                     kind: 'software',
+                    subtitle: metadata.displayName || metadata.appName,
                     title: metadata.appName
                 }
             }
         ]
     };
 
-    return plist.build(plistData);
+    return plist.build(plistData as plist.PlistValue);
 }
 
 // Function để tối ưu icon (resize và convert)

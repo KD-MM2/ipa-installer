@@ -1,6 +1,5 @@
 import { Worker, Job } from 'bullmq';
 import fs from 'fs';
-import path from 'path';
 import { PrismaClient } from '../../prisma/prisma';
 import { redisConnection } from '../lib/redis';
 import { IpaProcessJobData, QUEUE_NAMES, JobProgress } from '../types/queue';
@@ -32,7 +31,7 @@ export const ipaProcessWorker = new Worker(
             await updateProgress(job, 'Extracting metadata...', 30);
 
             const processedData = await extractIpaMetadata(filePath);
-            const { metadata, iconBuffer, iconFileName } = processedData;
+            const { metadata, iconBuffer } = processedData;
 
             await updateProgress(job, 'Metadata extraction completed', 40);
 
@@ -40,7 +39,7 @@ export const ipaProcessWorker = new Worker(
             let optimizedIconBuffer: Buffer | undefined;
             if (iconBuffer) {
                 await updateProgress(job, 'Converting icon to standard PNG...', 45);
-                let convertedIcon = convertCgbiToStandardPng(iconBuffer);
+                const convertedIcon = convertCgbiToStandardPng(iconBuffer);
                 await updateProgress(job, 'Optimizing icon...', 50);
                 optimizedIconBuffer = await optimizeIcon(convertedIcon);
                 await updateProgress(job, 'Icon optimization completed', 55);
@@ -53,7 +52,7 @@ export const ipaProcessWorker = new Worker(
             const s3Keys = UrlUtils.getS3Keys(buildId, originalFilename);
 
             // Upload IPA file
-            const ipaUrl = await s3Service.uploadFile(fs.createReadStream(filePath), s3Keys.ipaKey, {
+            await s3Service.uploadFile(fs.createReadStream(filePath), s3Keys.ipaKey, {
                 ContentType: 'application/octet-stream',
                 ContentDisposition: `attachment; filename="${originalFilename}"`
             });
@@ -62,10 +61,9 @@ export const ipaProcessWorker = new Worker(
 
             // Upload icon nếu có
             let hasIcon = false;
-            let iconUrl: string | undefined;
             if (optimizedIconBuffer) {
                 await updateProgress(job, 'Uploading icon...', 75);
-                iconUrl = await s3Service.uploadBuffer(optimizedIconBuffer, s3Keys.iconKey, {
+                await s3Service.uploadBuffer(optimizedIconBuffer, s3Keys.iconKey, {
                     ContentType: 'image/png'
                 });
                 hasIcon = true;
@@ -77,7 +75,7 @@ export const ipaProcessWorker = new Worker(
             // Generate URLs for plist content
             const urls = UrlUtils.getAllUrls(buildId, originalFilename, hasIcon);
             const plistContent = generatePlistContent(metadata, urls.ipaUrl, urls.iconUrl || undefined);
-            const plistUrl = await s3Service.uploadBuffer(Buffer.from(plistContent), s3Keys.plistKey, {
+            await s3Service.uploadBuffer(Buffer.from(plistContent), s3Keys.plistKey, {
                 ContentType: 'application/xml'
             });
 
