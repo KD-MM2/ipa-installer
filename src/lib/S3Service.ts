@@ -4,9 +4,17 @@ import { UploadResponse, CommonS3Response } from '@/lib/s3';
 
 export const S3Service = {
     // Connection test
-    async testConnection(): Promise<{ success: boolean; message: string; buckets?: string[] }> {
+    async testConnection(): Promise<{
+        success: boolean;
+        message: string;
+        buckets?: string[];
+    }> {
         try {
-            const response = await api.get<{ success: boolean; message: string; buckets?: string[] }>('/api/s3/upload');
+            const response = await api.get<{
+                success: boolean;
+                message: string;
+                buckets?: string[];
+            }>('/api/s3/upload');
             return response.data;
         } catch (error) {
             console.error('Error testing S3 connection:', error);
@@ -22,8 +30,8 @@ export const S3Service = {
 
         const response = await api.post<UploadResponse>('/api/s3/upload', formData, {
             headers: {
-                'Content-Type': 'multipart/form-data',
-            },
+                'Content-Type': 'multipart/form-data'
+            }
         });
         return response.data;
     },
@@ -54,9 +62,9 @@ export const S3Service = {
     // Generate presigned URL
     async generatePresignedUrl(key: string, expirySeconds: number = 24 * 60 * 60): Promise<string | null> {
         try {
-            const result = await api.post<{ success: boolean; url: string }>('/api/s3/presigned', { 
-                key, 
-                expirySeconds 
+            const result = await api.post<{ success: boolean; url: string }>('/api/s3/presigned', {
+                key,
+                expirySeconds
             });
             return result.data.success ? result.data.url : null;
         } catch (error) {
@@ -70,9 +78,12 @@ export const S3Service = {
         try {
             if (keys.length === 0) return {};
 
-            const result = await api.put<{ success: boolean; urls: Array<{ key: string; url: string }> }>('/api/s3/presigned', { 
-                keys, 
-                expirySeconds 
+            const result = await api.put<{
+                success: boolean;
+                urls: Array<{ key: string; url: string }>;
+            }>('/api/s3/presigned', {
+                keys,
+                expirySeconds
             });
             if (result.data.success) {
                 const urlMap: { [key: string]: string } = {};
@@ -104,7 +115,7 @@ export const S3Service = {
         const endpoint = type === 'icon' ? 'icons' : 'files';
         return `${baseUrl}/assets/${endpoint}/${key}`;
     },
-    
+
     // Generate icon proxy URL
     generateIconUrl(key: string): string {
         return this.generateProxyUrl(key, 'icon');
@@ -162,7 +173,7 @@ export const S3Service = {
     // Get file type from name
     getFileType(filename: string): 'ipa' | 'icon' | 'plist' | 'other' {
         const extension = this.getFileExtension(filename).toLowerCase();
-        
+
         if (extension === 'ipa') return 'ipa';
         if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) return 'icon';
         if (extension === 'plist') return 'plist';

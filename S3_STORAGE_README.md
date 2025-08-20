@@ -3,8 +3,9 @@
 ## Tổng quan
 
 Hệ thống này sử dụng MinIO làm S3-compatible storage để lưu trữ:
+
 - **IPA files**: Các file .ipa được upload
-- **App icons**: Icon được extract từ IPA 
+- **App icons**: Icon được extract từ IPA
 - **Plist files**: Manifest files cho iOS installation
 - **Other assets**: Các file khác
 
@@ -64,11 +65,12 @@ pnpm minio:start
 # Check logs
 pnpm minio:logs
 
-# Stop MinIO  
+# Stop MinIO
 pnpm minio:stop
 ```
 
 MinIO sẽ chạy tại:
+
 - **API**: http://localhost:9000
 - **Console**: http://localhost:9001 (admin/admin)
 
@@ -197,15 +199,15 @@ Bucket nên có policy cho phép public read access:
 
 ```json
 {
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": "*",
-      "Action": "s3:GetObject",
-      "Resource": "arn:aws:s3:::your-bucket/*"
-    }
-  ]
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::your-bucket/*"
+        }
+    ]
 }
 ```
 
@@ -216,20 +218,23 @@ Có thể setup CloudFront hoặc CDN khác cho proxy routes để improve perfo
 ## File Size Limits
 
 - **IPA files**: 100MB max
-- **Icons**: 5MB max  
+- **Icons**: 5MB max
 - **Plist files**: 1MB max
 - **General uploads**: 10MB max
 
 ## Supported File Types
 
 ### IPA Upload
+
 - `.ipa` files only
 - `application/octet-stream` MIME type
 
-### Icon Upload  
+### Icon Upload
+
 - `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`
 - Image MIME types
 
 ### Plist Upload
+
 - `.plist` files only
 - XML MIME types

@@ -1,12 +1,33 @@
 import { BUCKET_NAME, s3Client, isS3Available } from '@/lib/s3';
 import { NextRequest, NextResponse } from 'next/server';
 
+// Helper function to parse file size from env (e.g., "5120MB" -> bytes)
+function parseFileSize(sizeStr: string): number {
+    const match = sizeStr.match(/^(\d+(?:\.\d+)?)(B|KB|MB|GB)$/i);
+    if (!match) {
+        throw new Error(`Invalid file size format: ${sizeStr}`);
+    }
+
+    const value = parseFloat(match[1]);
+    const unit = match[2].toUpperCase();
+
+    switch (unit) {
+        case 'B':
+            return value;
+        case 'KB':
+            return value * 1024;
+        case 'MB':
+            return value * 1024 * 1024;
+        case 'GB':
+            return value * 1024 * 1024 * 1024;
+        default:
+            throw new Error(`Unsupported unit: ${unit}`);
+    }
+}
+
 export async function POST(request: NextRequest) {
     if (!isS3Available()) {
-        return NextResponse.json(
-            { success: false, error: 'S3 service not available' },
-            { status: 503 }
-        );
+        return NextResponse.json({ success: false, error: 'S3 service not available' }, { status: 503 });
     }
 
     try {
@@ -18,50 +39,34 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, error: 'No file provided' }, { status: 400 });
         }
 
-        // Validate file size (max 100MB for IPA files, 5MB for icons)
-        const maxSize = folder === 'ipa' ? 100 * 1024 * 1024 : 5 * 1024 * 1024;
+        // Get max file size from environment variable
+        const maxFileSizeStr = process.env.MAX_FILE_SIZE || '100MB';
+        const maxSize = parseFileSize(maxFileSizeStr);
+
         if (file.size > maxSize) {
-            const maxSizeText = folder === 'ipa' ? '100MB' : '5MB';
-            return NextResponse.json({ 
-                success: false, 
-                error: `File size too large (max ${maxSizeText})` 
-            }, { status: 400 });
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: `File size too large (max ${maxFileSizeStr})`
+                },
+                { status: 400 }
+            );
         }
 
-        // Validate file type based on folder
-        let allowedTypes: string[] = [];
-        if (folder === 'ipa') {
-            allowedTypes = ['application/octet-stream'];
-            if (!file.name.toLowerCase().endsWith('.ipa')) {
-                return NextResponse.json({ 
-                    success: false, 
-                    error: 'File must be an IPA file' 
-                }, { status: 400 });
-            }
-        } else if (folder === 'icons') {
-            allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-        } else if (folder === 'plists') {
-            allowedTypes = ['application/xml', 'text/xml', 'text/plain'];
-            if (!file.name.toLowerCase().endsWith('.plist')) {
-                return NextResponse.json({ 
-                    success: false, 
-                    error: 'File must be a plist file' 
-                }, { status: 400 });
-            }
-        } else {
-            // General uploads
-            allowedTypes = [
-                'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
-                'application/pdf', 'application/zip', 'application/x-zip-compressed',
-                'application/octet-stream', 'application/xml', 'text/xml', 'text/plain'
-            ];
-        }
+        // Get allowed file types from environment variable
+        const allowedFileTypesStr = process.env.ALLOWED_FILE_TYPES || '.ipa,.zip,.png,.jpg,.jpeg,.gif,.webp,.plist,.pdf';
+        const allowedExtensions = allowedFileTypesStr.split(',').map((ext) => ext.trim().toLowerCase());
 
-        if (!allowedTypes.includes(file.type)) {
-            return NextResponse.json({ 
-                success: false, 
-                error: 'File type not allowed' 
-            }, { status: 400 });
+        // Check if file extension is allowed
+        const fileExtension = '.' + file.name.toLowerCase().split('.').pop();
+        if (!allowedExtensions.includes(fileExtension)) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: `File type not allowed. Allowed types: ${allowedFileTypesStr}`
+                },
+                { status: 400 }
+            );
         }
 
         // Generate unique filename
@@ -80,19 +85,21 @@ export async function POST(request: NextRequest) {
             await s3Client.makeBucket(BUCKET_NAME);
         }
 
-        // Set content type based on file type
+        // Set content type based on file extension
         let contentType = file.type;
-        if (folder === 'ipa') {
+        if (fileExtension === '.ipa') {
             contentType = 'application/octet-stream';
-        } else if (folder === 'plists') {
+        } else if (fileExtension === '.plist') {
             contentType = 'application/xml';
+        } else if (['.zip', '.rar', '.7z'].includes(fileExtension)) {
+            contentType = 'application/octet-stream';
         }
 
         // Upload to S3
         await s3Client.putObject(BUCKET_NAME, objectKey, buffer, buffer.length, {
             'Content-Type': contentType,
             'Cache-Control': 'max-age=31536000',
-            'Content-Disposition': folder === 'ipa' ? `attachment; filename="${file.name}"` : 'inline'
+            'Content-Disposition': fileExtension === '.ipa' ? `attachment; filename="${file.name}"` : 'inline'
         });
 
         return NextResponse.json({
@@ -105,29 +112,26 @@ export async function POST(request: NextRequest) {
         });
     } catch (error: any) {
         console.error('S3 Upload Error:', error);
-        return NextResponse.json(
-            { success: false, error: error.message || 'Upload failed' },
-            { status: 500 }
-        );
+        return NextResponse.json({ success: false, error: error.message || 'Upload failed' }, { status: 500 });
     }
 }
 
 export async function DELETE(request: NextRequest) {
     if (!isS3Available()) {
-        return NextResponse.json(
-            { success: false, error: 'S3 service not available' },
-            { status: 503 }
-        );
+        return NextResponse.json({ success: false, error: 'S3 service not available' }, { status: 503 });
     }
 
     try {
         const { objectKey } = await request.json();
 
         if (!objectKey) {
-            return NextResponse.json({ 
-                success: false, 
-                error: 'Object key is required' 
-            }, { status: 400 });
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: 'Object key is required'
+                },
+                { status: 400 }
+            );
         }
 
         await s3Client.removeObject(BUCKET_NAME, objectKey);
@@ -138,10 +142,7 @@ export async function DELETE(request: NextRequest) {
         });
     } catch (error: any) {
         console.error('S3 Delete Error:', error);
-        return NextResponse.json(
-            { success: false, error: error.message || 'Delete failed' },
-            { status: 500 }
-        );
+        return NextResponse.json({ success: false, error: error.message || 'Delete failed' }, { status: 500 });
     }
 }
 
@@ -164,9 +165,6 @@ export async function GET() {
         });
     } catch (error: any) {
         console.error('S3 Connection Error:', error);
-        return NextResponse.json(
-            { success: false, error: error.message || 'Connection failed' },
-            { status: 500 }
-        );
+        return NextResponse.json({ success: false, error: error.message || 'Connection failed' }, { status: 500 });
     }
 }

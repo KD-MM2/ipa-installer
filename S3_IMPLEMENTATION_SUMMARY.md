@@ -3,36 +3,42 @@
 ## 🎉 Tính năng đã triển khai thành công
 
 ### 1. **Core S3 Infrastructure**
+
 - ✅ MinIO client configuration với build-time safety
 - ✅ Lazy initialization pattern để tránh lỗi build
 - ✅ Environment variables setup
 - ✅ Connection testing và health check
 
 ### 2. **API Routes**
+
 - ✅ **POST/DELETE/GET** `/api/s3/upload` - Upload, delete files và test connection
 - ✅ **POST/PUT** `/api/s3/presigned` - Generate presigned URLs
 - ✅ File validation theo folder (IPA, icons, plists)
 - ✅ Size limits và type validation
 
 ### 3. **Proxy Asset Routes**
+
 - ✅ `/assets/icons/[...path]` - Serve app icons với caching
 - ✅ `/assets/files/[...path]` - Serve IPA và plist files
 - ✅ Proper content-type và content-disposition headers
 - ✅ CDN-ready caching headers
 
 ### 4. **Client-Side Services**
+
 - ✅ **S3Service** - Upload, delete, presigned URLs
 - ✅ **StorageUtils** - Helper functions for app workflow
 - ✅ Type-safe API với TypeScript interfaces
 - ✅ Error handling và validation
 
 ### 5. **UI Components**
+
 - ✅ **UploadIPA** component với drag-drop support
 - ✅ File validation và progress feedback
 - ✅ Modern UI với Tailwind CSS
 - ✅ Success/error states
 
 ### 6. **Testing Infrastructure**
+
 - ✅ Comprehensive test page tại `/test-s3`
 - ✅ Connection testing
 - ✅ File upload/delete testing
@@ -42,6 +48,7 @@
 ## 🚀 Tính năng chính
 
 ### File Upload Flow
+
 1. **Client**: Select .ipa file via drag-drop hoặc file picker
 2. **Validation**: File type, size validation (100MB for IPA)
 3. **Upload**: Multipart upload tới S3 via API
@@ -49,14 +56,16 @@
 5. **Response**: Trả về S3 key và metadata
 
 ### Proxy URL System
+
 ```
 Original: https://minio:9000/bucket/ipa/123456-abc.ipa
 Proxy:    https://yourdomain.com/assets/files/ipa/123456-abc.ipa
 ```
 
 ### iOS Installation Support
+
 - ✅ Plist generation cho itms-services://
-- ✅ Proper content-type cho iOS compatibility  
+- ✅ Proper content-type cho iOS compatibility
 - ✅ Icon serving for installation UI
 
 ## 📁 File Structure
@@ -84,6 +93,7 @@ src/
 ## 🔧 Configuration
 
 ### Environment Variables
+
 ```env
 S3_ENDPOINT=192.168.0.2
 S3_PORT=9000
@@ -96,6 +106,7 @@ APP_URL=http://localhost:3000
 ```
 
 ### File Limits & Types
+
 - **IPA files**: 100MB max, `.ipa` extension, `application/octet-stream`
 - **Icons**: 5MB max, image types (jpg, png, gif, webp)
 - **Plist files**: 1MB max, `.plist` extension, XML content
@@ -104,6 +115,7 @@ APP_URL=http://localhost:3000
 ## 🎯 Ready for Production
 
 ### Deployment Checklist
+
 - ✅ Environment variables configured
 - ✅ S3 bucket created với proper permissions
 - ✅ Proxy routes ready for CDN
@@ -112,6 +124,7 @@ APP_URL=http://localhost:3000
 - ✅ Build-time compatibility ensured
 
 ### Security Features
+
 - ✅ File type validation
 - ✅ Size limits enforced
 - ✅ Proxy routing (no direct S3 exposure)
@@ -121,15 +134,17 @@ APP_URL=http://localhost:3000
 ## 🧪 Testing
 
 ### Test Endpoints
+
 - `GET /api/s3/upload` - Connection test
 - `POST /api/s3/upload` - File upload
 - `DELETE /api/s3/upload` - File deletion
 - `GET /test-s3` - Interactive test interface
 
 ### Verification Steps
+
 1. ✅ MinIO connection established
 2. ✅ File upload working
-3. ✅ Proxy URLs accessible  
+3. ✅ Proxy URLs accessible
 4. ✅ File deletion working
 5. ✅ UI components functional
 

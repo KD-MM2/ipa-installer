@@ -3,12 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest, props: { params: Promise<{ path: string[] }> }) {
     const params = await props.params;
-    
+
     if (!isS3Available()) {
-        return NextResponse.json(
-            { error: 'S3 service not available' },
-            { status: 503 }
-        );
+        return NextResponse.json({ error: 'S3 service not available' }, { status: 503 });
     }
 
     try {
@@ -26,11 +23,11 @@ export async function GET(request: NextRequest, props: { params: Promise<{ path:
 
         // Get filename from path
         const filename = params.path[params.path.length - 1];
-        
+
         // Determine content type and disposition based on file extension
-        let contentType = objectStat.metaData?.['content-type'] || 'application/octet-stream';
+        let contentType = objectStat.metaData?.['X-Amz-Meta-Contenttype'] || 'application/octet-stream';
         let contentDisposition = 'attachment';
-        
+
         if (filename.toLowerCase().endsWith('.ipa')) {
             contentType = 'application/octet-stream';
             contentDisposition = `attachment; filename="${filename}"`;

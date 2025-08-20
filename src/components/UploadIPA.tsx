@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { S3Service } from '@/lib/S3Service';
 
 interface UploadIPAProps {
-    onUploadSuccess?: (result: { buildId: string; key: string }) => void;
+    onUploadSuccess?: (result: { buildId: string; jobId: string; estimatedTime: string }) => void;
 }
 
 export default function UploadIPA({ onUploadSuccess }: UploadIPAProps) {
@@ -19,9 +18,9 @@ export default function UploadIPA({ onUploadSuccess }: UploadIPAProps) {
             return 'Chỉ chấp nhận file .ipa';
         }
 
-        // Check file size (max 100MB)
-        if (file.size > 100 * 1024 * 1024) {
-            return 'File quá lớn. Kích thước tối đa: 100MB';
+        // Check file size (max 500MB)
+        if (file.size > 500 * 1024 * 1024) {
+            return 'File quá lớn. Kích thước tối đa: 500MB';
         }
 
         return null;
@@ -75,17 +74,25 @@ export default function UploadIPA({ onUploadSuccess }: UploadIPAProps) {
         setError(null);
 
         try {
-            const result = await S3Service.uploadIPA(file);
-            
-            if (result.success && result.key) {
-                // Generate a simple buildId for demo (in real app, this would come from API)
-                const buildId = Math.random().toString(36).substring(2, 8);
-                
-                onUploadSuccess?.({ 
-                    buildId, 
-                    key: result.key 
+            // Create FormData for file upload
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Upload file and trigger queue processing
+            const response = await fetch('/api/upload-ipa', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                onUploadSuccess?.({
+                    buildId: result.buildId,
+                    jobId: result.jobId,
+                    estimatedTime: result.estimatedTime
                 });
-                
+
                 // Reset form
                 setFile(null);
                 setError(null);
@@ -113,10 +120,7 @@ export default function UploadIPA({ onUploadSuccess }: UploadIPAProps) {
             <div
                 className={`
                     border-2 border-dashed rounded-lg p-8 text-center transition-colors
-                    ${dragOver 
-                        ? 'border-blue-400 bg-blue-50' 
-                        : 'border-gray-300 hover:border-gray-400'
-                    }
+                    ${dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-gray-400'}
                     ${uploading ? 'opacity-50 pointer-events-none' : ''}
                 `}
                 onDragOver={handleDragOver}
@@ -125,35 +129,19 @@ export default function UploadIPA({ onUploadSuccess }: UploadIPAProps) {
             >
                 <div className="space-y-4">
                     <div className="text-6xl">📱</div>
-                    
+
                     <div>
-                        <h3 className="text-lg font-semibold text-gray-900">
-                            Upload file IPA
-                        </h3>
-                        <p className="text-sm text-gray-600 mt-1">
-                            Kéo thả file .ipa vào đây hoặc click để chọn file
-                        </p>
+                        <h3 className="text-lg font-semibold text-gray-900">Upload file IPA</h3>
+                        <p className="text-sm text-gray-600 mt-1">Kéo thả file .ipa vào đây hoặc click để chọn file</p>
                     </div>
 
                     <div className="space-y-2">
-                        <input
-                            type="file"
-                            accept=".ipa"
-                            onChange={handleFileChange}
-                            disabled={uploading}
-                            className="hidden"
-                            id="ipa-upload"
-                        />
-                        <label
-                            htmlFor="ipa-upload"
-                            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer disabled:opacity-50"
-                        >
+                        <input type="file" accept=".ipa" onChange={handleFileChange} disabled={uploading} className="hidden" id="ipa-upload" />
+                        <label htmlFor="ipa-upload" className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 cursor-pointer disabled:opacity-50">
                             Chọn file IPA
                         </label>
-                        
-                        <div className="text-xs text-gray-500">
-                            Kích thước tối đa: 100MB
-                        </div>
+
+                        <div className="text-xs text-gray-500">Kích thước tối đa: 500MB</div>
                     </div>
                 </div>
             </div>
@@ -173,9 +161,7 @@ export default function UploadIPA({ onUploadSuccess }: UploadIPAProps) {
             {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                     <div className="flex">
-                        <div className="text-red-600 text-sm">
-                            ❌ {error}
-                        </div>
+                        <div className="text-red-600 text-sm">❌ {error}</div>
                     </div>
                 </div>
             )}
@@ -186,10 +172,7 @@ export default function UploadIPA({ onUploadSuccess }: UploadIPAProps) {
                 disabled={!file || uploading}
                 className={`
                     w-full py-3 px-4 rounded-lg font-medium text-white transition-colors
-                    ${!file || uploading 
-                        ? 'bg-gray-400 cursor-not-allowed' 
-                        : 'bg-blue-600 hover:bg-blue-700'
-                    }
+                    ${!file || uploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}
                 `}
             >
                 {uploading ? (

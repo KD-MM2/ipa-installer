@@ -3,12 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(request: NextRequest, props: { params: Promise<{ path: string[] }> }) {
     const params = await props.params;
-    
+
     if (!isS3Available()) {
-        return NextResponse.json(
-            { error: 'S3 service not available' },
-            { status: 503 }
-        );
+        return NextResponse.json({ error: 'S3 service not available' }, { status: 503 });
     }
 
     try {
@@ -28,6 +25,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ path:
 
         // Convert to Web ReadableStream
         let webStream: ReadableStream<Uint8Array>;
+        let contentType = objectStat.metaData?.['X-Amz-Meta-Contenttype'] || 'image/jpeg';
         if (typeof (objectStream as any).toWeb === 'function') {
             webStream = (objectStream as any).toWeb();
         } else {
@@ -39,7 +37,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ path:
             const buffer = Buffer.concat(chunks);
             return new NextResponse(new Uint8Array(buffer), {
                 headers: {
-                    'Content-Type': objectStat.metaData?.['content-type'] || 'image/jpeg',
+                    'Content-Type': contentType,
                     'Cache-Control': 'public, max-age=31536000',
                     ETag: objectStat.etag || '',
                     'Last-Modified': objectStat.lastModified?.toUTCString() || ''
@@ -49,7 +47,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ path:
 
         return new NextResponse(webStream, {
             headers: {
-                'Content-Type': objectStat.metaData?.['content-type'] || 'image/jpeg',
+                'Content-Type': contentType,
                 'Cache-Control': 'public, max-age=31536000',
                 ETag: objectStat.etag || '',
                 'Last-Modified': objectStat.lastModified?.toUTCString() || ''

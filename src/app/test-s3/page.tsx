@@ -8,12 +8,15 @@ export default function TestS3Page() {
     const [connectionMessage, setConnectionMessage] = useState('');
     const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
     const [uploadMessage, setUploadMessage] = useState('');
-    const [uploadedFile, setUploadedFile] = useState<{ key: string; url: string } | null>(null);
+    const [uploadedFile, setUploadedFile] = useState<{
+        key: string;
+        url: string;
+    } | null>(null);
 
     const testConnection = async () => {
         setConnectionStatus('testing');
         setConnectionMessage('Testing S3 connection...');
-        
+
         try {
             const result = await S3Service.testConnection();
             if (result.success) {
@@ -55,7 +58,7 @@ export default function TestS3Page() {
             if (result.success && result.key) {
                 setUploadStatus('success');
                 setUploadMessage(`✅ File uploaded successfully!`);
-                
+
                 const proxyUrl = S3Service.generateProxyUrl(result.key, fileType);
                 setUploadedFile({
                     key: result.key,
@@ -139,40 +142,24 @@ export default function TestS3Page() {
     return (
         <div className="max-w-4xl mx-auto p-6 space-y-8">
             <h1 className="text-3xl font-bold">S3 Storage Test</h1>
-            
+
             {/* Connection Test */}
             <div className="border rounded-lg p-6 space-y-4">
                 <h2 className="text-xl font-semibold">Connection Test</h2>
-                
-                <button
-                    onClick={testConnection}
-                    disabled={connectionStatus === 'testing'}
-                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
-                >
+
+                <button onClick={testConnection} disabled={connectionStatus === 'testing'} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50">
                     {connectionStatus === 'testing' ? 'Testing...' : 'Test S3 Connection'}
                 </button>
-                
-                {connectionMessage && (
-                    <div className={`p-3 rounded ${
-                        connectionStatus === 'success' 
-                            ? 'bg-green-100 text-green-800' 
-                            : connectionStatus === 'error'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-blue-100 text-blue-800'
-                    }`}>
-                        {connectionMessage}
-                    </div>
-                )}
+
+                {connectionMessage && <div className={`p-3 rounded ${connectionStatus === 'success' ? 'bg-green-100 text-green-800' : connectionStatus === 'error' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>{connectionMessage}</div>}
             </div>
 
             {/* File Upload Test */}
             <div className="border rounded-lg p-6 space-y-4">
                 <h2 className="text-xl font-semibold">File Upload Test</h2>
-                
+
                 <div className="space-y-2">
-                    <label className="block text-sm font-medium">
-                        Choose file (IPA, image, or other):
-                    </label>
+                    <label className="block text-sm font-medium">Choose file (IPA, image, or other):</label>
                     <input
                         type="file"
                         onChange={handleFileUpload}
@@ -180,38 +167,20 @@ export default function TestS3Page() {
                         className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                     />
                 </div>
-                
-                {uploadMessage && (
-                    <div className={`p-3 rounded ${
-                        uploadStatus === 'success' 
-                            ? 'bg-green-100 text-green-800' 
-                            : uploadStatus === 'error'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-blue-100 text-blue-800'
-                    }`}>
-                        {uploadMessage}
-                    </div>
-                )}
+
+                {uploadMessage && <div className={`p-3 rounded ${uploadStatus === 'success' ? 'bg-green-100 text-green-800' : uploadStatus === 'error' ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800'}`}>{uploadMessage}</div>}
 
                 {uploadedFile && (
                     <div className="bg-gray-50 p-4 rounded space-y-2">
                         <h3 className="font-medium">Uploaded File:</h3>
                         <p className="text-sm text-gray-600">S3 Key: {uploadedFile.key}</p>
                         <p className="text-sm text-gray-600">Proxy URL: {uploadedFile.url}</p>
-                        
+
                         <div className="flex space-x-2">
-                            <a 
-                                href={uploadedFile.url} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600"
-                            >
+                            <a href={uploadedFile.url} target="_blank" rel="noopener noreferrer" className="px-3 py-1 bg-green-500 text-white text-sm rounded hover:bg-green-600">
                                 View File
                             </a>
-                            <button
-                                onClick={deleteFile}
-                                className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
-                            >
+                            <button onClick={deleteFile} className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600">
                                 Delete File
                             </button>
                         </div>
@@ -220,11 +189,7 @@ export default function TestS3Page() {
                         {S3Service.isImageFile(uploadedFile.key) && (
                             <div className="mt-4">
                                 <h4 className="font-medium mb-2">Image Preview:</h4>
-                                <img 
-                                    src={uploadedFile.url} 
-                                    alt="Uploaded" 
-                                    className="max-w-xs max-h-48 border rounded"
-                                />
+                                <img src={uploadedFile.url} alt="Uploaded" className="max-w-xs max-h-48 border rounded" />
                             </div>
                         )}
                     </div>
@@ -234,7 +199,7 @@ export default function TestS3Page() {
             {/* Storage Utils Test */}
             <div className="border rounded-lg p-6 space-y-4">
                 <h2 className="text-xl font-semibold">Storage Utils Test</h2>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <div>
                         <h3 className="font-medium">Environment Variables:</h3>
@@ -244,7 +209,7 @@ export default function TestS3Page() {
                             <li>APP_URL: {process.env.NEXT_PUBLIC_APP_URL || 'Not set'}</li>
                         </ul>
                     </div>
-                    
+
                     <div>
                         <h3 className="font-medium">Example URLs:</h3>
                         <ul className="space-y-1 text-gray-600">
@@ -258,12 +223,10 @@ export default function TestS3Page() {
             {/* Test plist generation */}
             <div className="border rounded-lg p-6 space-y-4">
                 <h2 className="text-xl font-semibold">Plist Generation Test</h2>
-                
+
                 <div className="bg-gray-50 p-4 rounded">
                     <h3 className="font-medium mb-2">Sample Plist Content:</h3>
-                    <pre className="text-xs bg-white p-2 rounded border overflow-x-auto">
-{generateSamplePlist()}
-                    </pre>
+                    <pre className="text-xs bg-white p-2 rounded border overflow-x-auto">{generateSamplePlist()}</pre>
                 </div>
             </div>
         </div>

@@ -21,20 +21,15 @@ model Build {
   version           String
   buildNumber       String
   displayName       String?
-  minOSVersion      String?
+  minimumOSVersion  String?
   
-  // File paths in storage
-  ipaPath           String   // Path to .ipa file in MinIO/S3
-  iconPath          String?  // Path to app icon
-  plistPath         String   // Path to manifest.plist for itms-services
-  
-  // Upload info
-  originalFileName  String   // Original .ipa filename
+  // File info
+  originalFilename  String   // Original .ipa filename
   fileSize         BigInt   // File size in bytes
+  hasIcon          Boolean  @default(false) // Whether icon.png exists
   
   // Status and settings
-  status           BuildStatus @default(PROCESSING)
-  isEnabled        Boolean     @default(true)
+  status           String   @default("processing") // processing, active, expired, failed
   
   // Download limits
   maxDownloads     Int?        // Maximum number of downloads allowed
@@ -42,73 +37,14 @@ model Build {
   
   // Expiry settings
   expiresAt        DateTime?   // When the build expires
-  autoDelete       Boolean     @default(true) // Auto delete when expired
-  
-  // Tags and notes
-  tag              String?     // Optional tag for version
-  notes            String?     // Optional notes
   
   // Timestamps
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
   
-  // Relations
-  downloads        Download[]
-  
   @@map("builds")
 }
 
-model Download {
-  id          String   @id @default(cuid())
-  buildId     String
-  
-  // Download info
-  userAgent   String?
-  ipAddress   String?
-  downloadedAt DateTime @default(now())
-  
-  // Relations
-  build       Build    @relation(fields: [buildId], references: [id], onDelete: Cascade)
-  
-  @@map("downloads")
-}
 
-model ProcessingJob {
-  id          String      @id @default(cuid())
-  buildId     String      @unique
-  jobId       String      @unique // Bull.js job ID
-  
-  status      JobStatus   @default(PENDING)
-  progress    Int         @default(0) // 0-100
-  
-  // Error handling
-  error       String?
-  retryCount  Int         @default(0)
-  maxRetries  Int         @default(3)
-  
-  // Timestamps
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  startedAt   DateTime?
-  completedAt DateTime?
-  
-  @@map("processing_jobs")
-}
-
-enum BuildStatus {
-  PROCESSING  // Being processed by worker
-  READY       // Ready for download
-  EXPIRED     // Expired but not yet deleted
-  DISABLED    // Manually disabled
-  ERROR       // Processing failed
-}
-
-enum JobStatus {
-  PENDING     // Waiting to be processed
-  ACTIVE      // Currently being processed
-  COMPLETED   // Successfully completed
-  FAILED      // Failed to process
-  DELAYED     // Delayed for retry
-}
 
 

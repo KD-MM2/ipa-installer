@@ -39,7 +39,7 @@ export class StorageUtils {
         // Create a File object from buffer
         const uint8Array = new Uint8Array(iconBuffer);
         const iconFile = new File([uint8Array], filename, { type: 'image/png' });
-        
+
         const result = await S3Service.uploadIcon(iconFile);
         if (!result.success || !result.key) {
             throw new Error(result.error || 'Failed to upload icon');
@@ -52,8 +52,10 @@ export class StorageUtils {
      */
     static async uploadPlist(plistContent: string, filename: string): Promise<{ key: string }> {
         // Create a File object from plist content
-        const plistFile = new File([plistContent], filename, { type: 'application/xml' });
-        
+        const plistFile = new File([plistContent], filename, {
+            type: 'application/xml'
+        });
+
         const result = await S3Service.uploadPlist(plistFile);
         if (!result.success || !result.key) {
             throw new Error(result.error || 'Failed to upload plist');
@@ -80,7 +82,9 @@ export class StorageUtils {
                     <key>url</key>
                     <string>${ipaUrl}</string>
                 </dict>
-                ${iconUrl ? `
+                ${
+                    iconUrl
+                        ? `
                 <dict>
                     <key>kind</key>
                     <string>display-image</string>
@@ -93,7 +97,9 @@ export class StorageUtils {
                     <key>url</key>
                     <string>${iconUrl}</string>
                 </dict>
-                ` : ''}
+                `
+                        : ''
+                }
             </array>
             <key>metadata</key>
             <dict>
@@ -129,9 +135,7 @@ export class StorageUtils {
      * Delete build files from S3
      */
     static async deleteBuildFiles(ipaKey: string, iconKey?: string, plistKey?: string): Promise<void> {
-        const deletePromises: Promise<any>[] = [
-            S3Service.deleteFile(ipaKey)
-        ];
+        const deletePromises: Promise<any>[] = [S3Service.deleteFile(ipaKey)];
 
         if (iconKey) {
             deletePromises.push(S3Service.deleteFile(iconKey));
