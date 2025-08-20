@@ -3,6 +3,41 @@ import { PrismaClient } from '../../../../prisma/prisma';
 
 const prisma = new PrismaClient();
 
+// GET /api/download?buildId=nF2VZ9
+export async function GET(request: NextRequest) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const buildId = searchParams.get('buildId');
+
+        if (!buildId) {
+            return NextResponse.json({ success: false, error: 'buildId is required' }, { status: 400 });
+        }
+
+        // Get build info
+        const build = await prisma.build.findUnique({
+            where: { buildId },
+            select: {
+                id: true,
+                buildId: true,
+                appName: true,
+                version: true,
+                buildNumber: true,
+                status: true,
+                expiresAt: true
+            }
+        });
+
+        if (!build) {
+            return NextResponse.json({ success: false, error: 'Build not found' }, { status: 404 });
+        }
+
+        return NextResponse.json({ success: true, data: build });
+    } catch (error) {
+        console.error('Error fetching build info:', error);
+        return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    }
+}
+
 export async function POST(request: NextRequest) {
     try {
         const { buildId } = await request.json();

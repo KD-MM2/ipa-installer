@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import UploadIPA from '@/components/UploadIPA';
 import UploadSuccessState from '@/components/UploadSuccessState';
+import Link from 'next/link';
 
 export default function Home() {
     const [uploadResult, setUploadResult] = useState<{
@@ -58,15 +59,13 @@ export default function Home() {
 
                 {/* Footer */}
                 <div className="mt-16 text-center text-sm text-gray-500">
-                    <p>Nền tảng phân phối app iOS cho developer và team nhỏ</p>
-                    <div className="mt-4 space-x-4">
-                        <a href="/test-s3" className="hover:text-gray-700">
-                            Test S3
-                        </a>
-                        <a href="/admin" className="hover:text-gray-700">
-                            Admin
-                        </a>
-                    </div>
+                    <p>
+                        Nền tảng phân phối app iOS cho{' '}
+                        <Link href="/admin" className="hover:text-gray-700">
+                            developer
+                        </Link>{' '}
+                        và team nhỏ
+                    </p>
                 </div>
             </div>
         </div>

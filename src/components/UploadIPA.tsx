@@ -19,9 +19,9 @@ export default function UploadIPA({ onUploadSuccess }: UploadIPAProps) {
             return 'Chỉ chấp nhận file .ipa';
         }
 
-        // Check file size (max 500MB)
-        if (file.size > 500 * 1024 * 1024) {
-            return 'File quá lớn. Kích thước tối đa: 500MB';
+        // Check file size (max 2GB)
+        if (file.size > 2 * 1024 * 1024 * 1024) {
+            return 'File quá lớn. Kích thước tối đa: 2GB';
         }
 
         return null;
@@ -187,7 +187,7 @@ export default function UploadIPA({ onUploadSuccess }: UploadIPAProps) {
                             Chọn file IPA
                         </label>
 
-                        <div className="text-xs text-gray-500">Kích thước tối đa: 500MB</div>
+                        <div className="text-xs text-gray-500">Kích thước tối đa: 2GB</div>
                     </div>
                 </div>
             </div>
@@ -231,7 +231,7 @@ export default function UploadIPA({ onUploadSuccess }: UploadIPAProps) {
                 onClick={handleUpload}
                 disabled={!file || uploading}
                 className={`
-                    w-full py-3 px-4 rounded-lg font-medium text-white transition-colors
+                    btn w-full py-3 px-4 rounded-lg font-medium text-white transition-colors
                     ${!file || uploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}
                 `}
             >

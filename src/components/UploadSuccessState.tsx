@@ -206,18 +206,18 @@ export default function UploadSuccessState({ uploadResult, onReset }: UploadSucc
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <button onClick={onReset} className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                <button onClick={onReset} className="btn px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
                     Upload file khác
                 </button>
 
                 {jobStatus?.state === 'completed' && buildInfo && (
-                    <button onClick={handleViewBuild} className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <button onClick={handleViewBuild} className="btn px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                         Xem chi tiết & Tải xuống
                     </button>
                 )}
 
                 {jobStatus?.state === 'failed' && (
-                    <button onClick={onReset} className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                    <button onClick={onReset} className="btn px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
                         Thử lại
                     </button>
                 )}

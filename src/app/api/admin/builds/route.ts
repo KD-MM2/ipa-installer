@@ -142,23 +142,66 @@ export async function PATCH(request: NextRequest) {
     }
 }
 
-// Delete build
+// Delete build permanently from database
 export async function DELETE(request: NextRequest) {
     try {
-        const { buildId } = await request.json();
+        const { buildId, buildIds } = await request.json();
 
-        if (!buildId) {
-            return NextResponse.json({ success: false, error: 'buildId is required' }, { status: 400 });
+        if (!buildId && !buildIds) {
+            return NextResponse.json({ success: false, error: 'buildId or buildIds is required' }, { status: 400 });
         }
 
-        // Schedule cleanup job for this build
-        const { addCleanupJob } = await import('@/lib/queue');
-        await addCleanupJob(buildId);
+        // Handle bulk delete
+        if (buildIds && Array.isArray(buildIds)) {
+            // Delete multiple builds
+            const deleteResult = await prisma.build.deleteMany({
+                where: {
+                    buildId: {
+                        in: buildIds
+                    }
+                }
+            });
 
-        return NextResponse.json({
-            success: true,
-            message: 'Build deletion scheduled'
-        });
+            // Schedule cleanup jobs for file system cleanup
+            const { addCleanupJob } = await import('@/lib/queue');
+            for (const id of buildIds) {
+                await addCleanupJob(id);
+            }
+
+            return NextResponse.json({
+                success: true,
+                message: `${deleteResult.count} builds deleted successfully`,
+                deletedCount: deleteResult.count
+            });
+        }
+
+        // Handle single delete
+        if (buildId) {
+            // First check if build exists
+            const existingBuild = await prisma.build.findUnique({
+                where: { buildId }
+            });
+
+            if (!existingBuild) {
+                return NextResponse.json({ success: false, error: 'Build not found' }, { status: 404 });
+            }
+
+            // Delete the build from database
+            await prisma.build.delete({
+                where: { buildId }
+            });
+
+            // Schedule cleanup job for file system cleanup
+            const { addCleanupJob } = await import('@/lib/queue');
+            await addCleanupJob(buildId);
+
+            return NextResponse.json({
+                success: true,
+                message: 'Build deleted successfully'
+            });
+        }
+
+        return NextResponse.json({ success: false, error: 'Invalid request' }, { status: 400 });
     } catch (error) {
         console.error('Error deleting build:', error);
         return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });

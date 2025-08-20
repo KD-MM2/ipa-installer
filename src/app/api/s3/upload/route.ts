@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Get max file size from environment variable
-        const maxFileSizeStr = process.env.MAX_FILE_SIZE || '100MB';
+        const maxFileSizeStr = process.env.MAX_FILE_SIZE || '2GB';
         const maxSize = parseFileSize(maxFileSizeStr);
 
         if (file.size > maxSize) {

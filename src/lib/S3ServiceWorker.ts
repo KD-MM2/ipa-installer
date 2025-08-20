@@ -14,7 +14,7 @@ export class S3ServiceWorker {
             secretKey: process.env.MINIO_SECRET_KEY || ''
         });
 
-        this.bucketName = process.env.MINIO_BUCKET_NAME || 'ipa-builds';
+        this.bucketName = process.env.MINIO_BUCKET_NAME || 'ipa-installer';
     }
 
     async uploadFile(stream: Readable, key: string, metadata?: any): Promise<string> {

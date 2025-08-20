@@ -326,7 +326,7 @@ export default function BuildDetailPage() {
                                 onClick={handleInstall}
                                 disabled={!canDownload() || isInstalling}
                                 className={`
-                                    w-full py-4 px-6 rounded-lg font-semibold text-lg transition-colors
+                                    btn w-full py-4 px-6 rounded-lg font-semibold text-lg transition-colors
                                     ${canDownload() && !isInstalling ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'}
                                 `}
                             >
@@ -370,7 +370,7 @@ export default function BuildDetailPage() {
                                         navigator.clipboard.writeText(window.location.href);
                                         alert('Đã copy link!');
                                     }}
-                                    className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-black transition-colors"
+                                    className="btn px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm text-black transition-colors"
                                 >
                                     Copy
                                 </button>
