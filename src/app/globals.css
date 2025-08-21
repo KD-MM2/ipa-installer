@@ -1,4 +1,7 @@
 @import 'tailwindcss';
+@import 'primereact/resources/primereact.css';
+@import 'primeicons/primeicons.css';
+@import 'primereact/resources/themes/mira/theme.css';
 
 :root {
     --background: #ffffff;
