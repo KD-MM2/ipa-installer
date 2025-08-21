@@ -3,7 +3,7 @@ import path from 'path';
 import { execSync } from 'child_process';
 import * as plist from 'plist';
 import sharp from 'sharp';
-import { IpaMetadata, ProcessedIpaData } from '../types/queue';
+import { IpaMetadata, ProcessedIpaData } from '@/types/queue';
 
 // Function để giải nén và extract metadata từ file IPA
 export async function extractIpaMetadata(ipaFilePath: string): Promise<ProcessedIpaData> {

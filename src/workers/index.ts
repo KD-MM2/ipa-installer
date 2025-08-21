@@ -7,10 +7,10 @@
 
 import 'dotenv/config';
 
-import './ipa-process-worker';
-import './cleanup-worker';
-import { scheduleExpiredAppsCleanup } from './cleanup-worker';
-import { checkRedisConnection, closeRedisConnection } from '../lib/redis';
+import '@/workers/ipa-process-worker';
+import '@/workers/cleanup-worker';
+import { scheduleExpiredAppsCleanup } from '@/workers/cleanup-worker';
+import { checkRedisConnection, closeRedisConnection } from '@/lib/redis';
 
 console.log('🚀 Starting IPA Installer Workers...');
 

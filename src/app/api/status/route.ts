@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getJobStatus } from '@/lib/queue';
 import { QUEUE_NAMES } from '@/types/queue';
-import { PrismaClient } from '../../../../prisma/prisma';
+import { PrismaClient } from '@/../prisma/prisma';
 import { UrlUtils } from '@/lib/url-utils';
 
 const prisma = new PrismaClient();

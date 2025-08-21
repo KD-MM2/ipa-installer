@@ -1,6 +1,6 @@
 import { Queue } from 'bullmq';
-import { redisConnection } from './redis';
-import { IpaProcessJobData, QUEUE_NAMES } from '../types/queue';
+import { redisConnection } from '@/lib/redis';
+import { IpaProcessJobData, QUEUE_NAMES } from '@/types/queue';
 
 // Tạo queue cho xử lý IPA
 export const ipaProcessQueue = new Queue(QUEUE_NAMES.IPA_PROCESS, {

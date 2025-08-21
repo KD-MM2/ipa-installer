@@ -1,9 +1,9 @@
 import { Worker, Job } from 'bullmq';
-import { PrismaClient } from '../../prisma/prisma';
-import { redisConnection } from '../lib/redis';
-import { QUEUE_NAMES } from '../types/queue';
-import { S3ServiceWorker } from '../lib/S3ServiceWorker';
-import { UrlUtils } from '../lib/url-utils';
+import { PrismaClient } from '@/../prisma/prisma';
+import { redisConnection } from '@/lib/redis';
+import { QUEUE_NAMES } from '@/types/queue';
+import { S3ServiceWorker } from '@/lib/S3ServiceWorker';
+import { UrlUtils } from '@/lib/url-utils';
 
 const prisma = new PrismaClient();
 const s3Service = new S3ServiceWorker();
@@ -110,7 +110,7 @@ export async function scheduleExpiredAppsCleanup() {
         console.log(`🔍 Found ${expiredApps.length} expired apps to cleanup`);
 
         // Thêm cleanup jobs cho từng app hết hạn
-        const { cleanupQueue } = await import('../lib/queue');
+        const { cleanupQueue } = await import('@/lib/queue');
         for (const app of expiredApps) {
             await cleanupQueue.add(
                 'cleanup-expired',
