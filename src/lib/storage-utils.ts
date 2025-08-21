@@ -120,9 +120,9 @@ export class StorageUtils {
     }
 
     /**
-     * Get URLs for build files
+     * Get URLs for app files
      */
-    static getBuildUrls(ipaKey: string, iconKey?: string, plistKey?: string) {
+    static getAppUrls(ipaKey: string, iconKey?: string, plistKey?: string) {
         return {
             ipaUrl: S3Service.generateProxyUrl(ipaKey, 'ipa'),
             iconUrl: iconKey ? S3Service.generateProxyUrl(iconKey, 'icon') : undefined,
@@ -132,9 +132,9 @@ export class StorageUtils {
     }
 
     /**
-     * Delete build files from S3
+     * Delete app files from S3
      */
-    static async deleteBuildFiles(ipaKey: string, iconKey?: string, plistKey?: string): Promise<void> {
+    static async deleteAppFiles(ipaKey: string, iconKey?: string, plistKey?: string): Promise<void> {
         const deletePromises: Promise<any>[] = [S3Service.deleteFile(ipaKey)];
 
         if (iconKey) {
@@ -148,7 +148,7 @@ export class StorageUtils {
         try {
             await Promise.all(deletePromises);
         } catch (error) {
-            console.error('Error deleting some build files:', error);
+            console.error('Error deleting some app files:', error);
             // Don't throw error for cleanup operations
         }
     }

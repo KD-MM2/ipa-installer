@@ -15,9 +15,9 @@ const s3Service = new S3ServiceWorker();
 export const ipaProcessWorker = new Worker(
     QUEUE_NAMES.IPA_PROCESS,
     async (job: Job<IpaProcessJobData>) => {
-        const { buildId, filePath, originalFilename, fileSize } = job.data;
+        const { appId, filePath, originalFilename, fileSize } = job.data;
 
-        console.log(`🔄 Processing IPA job ${job.id} for build ${buildId}`);
+        console.log(`🔄 Processing IPA job ${job.id} for app ${appId}`);
 
         try {
             // Bước 1: Validate file
@@ -49,7 +49,7 @@ export const ipaProcessWorker = new Worker(
             await updateProgress(job, 'Uploading files to storage...', 60);
 
             // Generate S3 keys using UrlUtils
-            const s3Keys = UrlUtils.getS3Keys(buildId, originalFilename);
+            const s3Keys = UrlUtils.getS3Keys(appId, originalFilename);
 
             // Upload IPA file
             await s3Service.uploadFile(fs.createReadStream(filePath), s3Keys.ipaKey, {
@@ -73,7 +73,7 @@ export const ipaProcessWorker = new Worker(
             await updateProgress(job, 'Generating plist file...', 80);
 
             // Generate URLs for plist content
-            const urls = UrlUtils.getAllUrls(buildId, originalFilename, hasIcon);
+            const urls = UrlUtils.getAllUrls(appId, originalFilename, hasIcon);
             const plistContent = generatePlistContent(metadata, urls.ipaUrl, urls.iconUrl || undefined);
             await s3Service.uploadBuffer(Buffer.from(plistContent), s3Keys.plistKey, {
                 ContentType: 'application/xml'
@@ -87,9 +87,9 @@ export const ipaProcessWorker = new Worker(
             const expiresAt = new Date();
             expiresAt.setDate(expiresAt.getDate() + 7); // Hết hạn sau 7 ngày
 
-            await prisma.build.create({
+            await prisma.app.create({
                 data: {
-                    buildId: buildId,
+                    appId: appId,
                     appName: metadata.appName,
                     bundleId: metadata.bundleId,
                     version: metadata.version,
@@ -119,15 +119,15 @@ export const ipaProcessWorker = new Worker(
 
             await updateProgress(job, 'Completed', 100);
 
-            console.log(`✅ Successfully processed IPA for build ${buildId}`);
+            console.log(`✅ Successfully processed IPA for app ${appId}`);
 
             return {
-                buildId,
+                appId,
                 metadata,
-                urls: UrlUtils.getAllUrls(buildId, originalFilename, hasIcon)
+                urls: UrlUtils.getAllUrls(appId, originalFilename, hasIcon)
             };
         } catch (error) {
-            console.error(`❌ Error processing IPA for build ${buildId}:`, error);
+            console.error(`❌ Error processing IPA for app ${appId}:`, error);
 
             // Cleanup on error
             try {
@@ -140,10 +140,10 @@ export const ipaProcessWorker = new Worker(
 
             // Update database status to failed
             try {
-                await prisma.build.upsert({
-                    where: { buildId: buildId },
+                await prisma.app.upsert({
+                    where: { appId: appId },
                     create: {
-                        buildId: buildId,
+                        appId: appId,
                         appName: 'Unknown App',
                         bundleId: '',
                         version: '1.0',

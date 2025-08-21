@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 interface UploadIPAProps {
-    onUploadSuccess?: (result: { buildId: string; jobId: string; estimatedTime: string }) => void;
+    onUploadSuccess?: (result: { appId: string; jobId: string; estimatedTime: string }) => void;
 }
 
 export default function UploadIPA({ onUploadSuccess }: UploadIPAProps) {
@@ -133,7 +133,7 @@ export default function UploadIPA({ onUploadSuccess }: UploadIPAProps) {
             if (result.success) {
                 setUploadProgress(100);
                 onUploadSuccess?.({
-                    buildId: result.buildId,
+                    appId: result.appId,
                     jobId: result.jobId,
                     estimatedTime: result.estimatedTime
                 });

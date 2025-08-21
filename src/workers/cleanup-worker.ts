@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 const s3Service = new S3ServiceWorker();
 
 interface CleanupJobData {
-    buildId: string;
+    appId: string;
     force?: boolean; // Force delete even if not expired
 }
 
@@ -17,34 +17,34 @@ interface CleanupJobData {
 export const cleanupWorker = new Worker(
     QUEUE_NAMES.CLEANUP,
     async (job: Job<CleanupJobData>) => {
-        const { buildId, force = false } = job.data;
+        const { appId, force = false } = job.data;
 
-        console.log(`🧹 Processing cleanup job ${job.id} for build ${buildId}`);
+        console.log(`🧹 Processing cleanup job ${job.id} for app ${appId}`);
 
         try {
-            // Lấy thông tin build từ database
-            const build = await prisma.build.findUnique({
-                where: { buildId: buildId }
+            // Lấy thông tin app từ database
+            const app = await prisma.app.findUnique({
+                where: { appId: appId }
             });
 
-            if (!build) {
-                console.log(`⚠️ Build ${buildId} not found, skipping cleanup`);
-                return { success: true, message: 'Build not found' };
+            if (!app) {
+                console.log(`⚠️ App ${appId} not found, skipping cleanup`);
+                return { success: true, message: 'App not found' };
             }
 
-            // Kiểm tra xem build có hết hạn chưa (hoặc force delete)
+            // Kiểm tra xem app có hết hạn chưa (hoặc force delete)
             const now = new Date();
-            const isExpired = build.expiresAt && build.expiresAt < now;
+            const isExpired = app.expiresAt && app.expiresAt < now;
 
             if (!force && !isExpired) {
-                console.log(`⏳ Build ${buildId} not yet expired, skipping cleanup`);
-                return { success: true, message: 'Build not expired' };
+                console.log(`⏳ App ${appId} not yet expired, skipping cleanup`);
+                return { success: true, message: 'App not expired' };
             }
 
-            console.log(`🗑️ Deleting expired build ${buildId}`);
+            console.log(`🗑️ Deleting expired app ${appId}`);
 
             // Generate S3 keys using UrlUtils
-            const s3Keys = UrlUtils.getS3Keys(buildId, build.originalFilename);
+            const s3Keys = UrlUtils.getS3Keys(appId, app.originalFilename);
 
             // Xóa files từ S3/MinIO
             const deletePromises: Promise<any>[] = [
@@ -53,7 +53,7 @@ export const cleanupWorker = new Worker(
             ];
 
             // Xóa icon nếu có
-            if (build.hasIcon) {
+            if (app.hasIcon) {
                 deletePromises.push(s3Service.deleteFile(s3Keys.iconKey).catch((err) => console.warn(`Failed to delete icon file: ${err.message}`)));
             }
 
@@ -61,20 +61,20 @@ export const cleanupWorker = new Worker(
             await Promise.allSettled(deletePromises);
 
             // Xóa record khỏi database
-            await prisma.build.delete({
-                where: { buildId: buildId }
+            await prisma.app.delete({
+                where: { appId: appId }
             });
 
-            console.log(`✅ Successfully cleaned up build ${buildId}`);
+            console.log(`✅ Successfully cleaned up app ${appId}`);
 
             return {
                 success: true,
-                message: 'Build cleaned up successfully',
-                buildId,
+                message: 'App cleaned up successfully',
+                appId,
                 filesDeleted: deletePromises.length
             };
         } catch (error) {
-            console.error(`❌ Error during cleanup for build ${buildId}:`, error);
+            console.error(`❌ Error during cleanup for app ${appId}:`, error);
             throw error;
         }
     },
@@ -84,50 +84,49 @@ export const cleanupWorker = new Worker(
     }
 );
 
-// Function để schedule cleanup jobs cho tất cả builds hết hạn
-export async function scheduleExpiredBuildsCleanup() {
+// Function để schedule cleanup jobs cho tất cả apps hết hạn
+export async function scheduleExpiredAppsCleanup() {
     try {
         const now = new Date();
 
-        // Tìm tất cả builds đã hết hạn
-        const expiredBuilds = await prisma.build.findMany({
+        // Tìm tất cả apps đã hết hạn
+        const expiredApps = await prisma.app.findMany({
             where: {
                 expiresAt: {
                     lt: now
                 },
                 status: {
-                    not: 'failed' // Không cleanup builds đã failed
+                    not: 'failed' // Không cleanup apps đã failed
                 }
             },
             select: {
                 id: true,
-                buildId: true,
+                appId: true,
                 appName: true,
                 expiresAt: true
             }
         });
 
-        console.log(`🔍 Found ${expiredBuilds.length} expired builds to cleanup`);
+        console.log(`🔍 Found ${expiredApps.length} expired apps to cleanup`);
 
-        // Thêm cleanup jobs cho từng build hết hạn
+        // Thêm cleanup jobs cho từng app hết hạn
         const { cleanupQueue } = await import('../lib/queue');
-
-        for (const build of expiredBuilds) {
+        for (const app of expiredApps) {
             await cleanupQueue.add(
                 'cleanup-expired',
-                { buildId: build.buildId },
+                { appId: app.appId },
                 {
                     priority: 10, // Priority cao cho cleanup
                     delay: Math.random() * 10000 // Random delay để tránh tải đồng loạt
                 }
             );
 
-            console.log(`📋 Scheduled cleanup for build ${build.buildId} (${build.appName})`);
+            console.log(`📋 Scheduled cleanup for app ${app.appId} (${app.appName})`);
         }
 
-        return expiredBuilds.length;
+        return expiredApps.length;
     } catch (error) {
-        console.error('❌ Error scheduling expired builds cleanup:', error);
+        console.error('❌ Error scheduling expired apps cleanup:', error);
         throw error;
     }
 }

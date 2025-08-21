@@ -22,21 +22,21 @@ export async function GET(request: NextRequest) {
         }
 
         if (search) {
-            where.OR = [{ appName: { contains: search, mode: 'insensitive' } }, { bundleId: { contains: search, mode: 'insensitive' } }, { buildId: { contains: search, mode: 'insensitive' } }, { version: { contains: search, mode: 'insensitive' } }];
+            where.OR = [{ appName: { contains: search, mode: 'insensitive' } }, { bundleId: { contains: search, mode: 'insensitive' } }, { appId: { contains: search, mode: 'insensitive' } }, { version: { contains: search, mode: 'insensitive' } }];
         }
 
         // Get total count
-        const total = await prisma.build.count({ where });
+        const total = await prisma.app.count({ where });
 
-        // Get builds
-        const builds = await prisma.build.findMany({
+        // Get apps
+        const apps = await prisma.app.findMany({
             where,
             orderBy: { createdAt: 'desc' },
             skip,
             take: limit,
             select: {
                 id: true,
-                buildId: true,
+                appId: true,
                 appName: true,
                 bundleId: true,
                 version: true,
@@ -56,11 +56,11 @@ export async function GET(request: NextRequest) {
         });
 
         // Convert BigInt to string and add URLs for JSON serialization
-        const buildsFormatted = builds.map((build: any) => {
-            const urls = UrlUtils.getAllUrls(build.buildId, build.originalFilename, build.hasIcon);
+        const appsFormatted = apps.map((app: any) => {
+            const urls = UrlUtils.getAllUrls(app.appId, app.originalFilename, app.hasIcon);
             return {
-                ...build,
-                fileSize: build.fileSize.toString(),
+                ...app,
+                fileSize: app.fileSize.toString(),
                 iconUrl: urls.iconUrl,
                 ipaUrl: urls.ipaUrl,
                 plistUrl: urls.plistUrl,
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({
             success: true,
-            data: buildsFormatted,
+            data: appsFormatted,
             pagination: {
                 page,
                 limit,
@@ -84,18 +84,18 @@ export async function GET(request: NextRequest) {
             }
         });
     } catch (error) {
-        console.error('Error getting builds:', error);
+        console.error('Error getting apps:', error);
         return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
 }
 
-// Update build (disable, set expiry, etc.)
+// Update app (disable, set expiry, etc.)
 export async function PATCH(request: NextRequest) {
     try {
-        const { buildId, updates } = await request.json();
+        const { appId, updates } = await request.json();
 
-        if (!buildId) {
-            return NextResponse.json({ success: false, error: 'buildId is required' }, { status: 400 });
+        if (!appId) {
+            return NextResponse.json({ success: false, error: 'appId is required' }, { status: 400 });
         }
 
         // Validate allowed updates
@@ -117,12 +117,12 @@ export async function PATCH(request: NextRequest) {
             filteredUpdates.expiresAt = new Date(filteredUpdates.expiresAt);
         }
 
-        const updatedBuild = await prisma.build.update({
-            where: { buildId },
+        const updatedApp = await prisma.app.update({
+            where: { appId },
             data: filteredUpdates,
             select: {
                 id: true,
-                buildId: true,
+                appId: true,
                 appName: true,
                 status: true,
                 maxDownloads: true,
@@ -133,77 +133,77 @@ export async function PATCH(request: NextRequest) {
 
         return NextResponse.json({
             success: true,
-            build: updatedBuild,
-            message: 'Build updated successfully'
+            app: updatedApp,
+            message: 'App updated successfully'
         });
     } catch (error) {
-        console.error('Error updating build:', error);
+        console.error('Error updating app:', error);
         return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
 }
 
-// Delete build permanently from database
+// Delete app permanently from database
 export async function DELETE(request: NextRequest) {
     try {
-        const { buildId, buildIds } = await request.json();
+        const { appId, appIds } = await request.json();
 
-        if (!buildId && !buildIds) {
-            return NextResponse.json({ success: false, error: 'buildId or buildIds is required' }, { status: 400 });
+        if (!appId && !appIds) {
+            return NextResponse.json({ success: false, error: 'appId or appIds is required' }, { status: 400 });
         }
 
         // Handle bulk delete
-        if (buildIds && Array.isArray(buildIds)) {
-            // Delete multiple builds
-            const deleteResult = await prisma.build.deleteMany({
+        if (appIds && Array.isArray(appIds)) {
+            // Delete multiple apps
+            const deleteResult = await prisma.app.deleteMany({
                 where: {
-                    buildId: {
-                        in: buildIds
+                    appId: {
+                        in: appIds
                     }
                 }
             });
 
-            // Schedule cleanup jobs for file system cleanup
+            // // Schedule cleanup jobs for file system cleanup
             const { addCleanupJob } = await import('@/lib/queue');
-            for (const id of buildIds) {
+            for (const id of appIds) {
                 await addCleanupJob(id);
             }
 
             return NextResponse.json({
                 success: true,
-                message: `${deleteResult.count} builds deleted successfully`,
+                message: `${deleteResult.count} apps deleted successfully`,
                 deletedCount: deleteResult.count
             });
         }
 
         // Handle single delete
-        if (buildId) {
-            // First check if build exists
-            const existingBuild = await prisma.build.findUnique({
-                where: { buildId }
+        if (appId) {
+            // First check if app exists
+            const existingApp = await prisma.app.findUnique({
+                where: { appId }
             });
 
-            if (!existingBuild) {
-                return NextResponse.json({ success: false, error: 'Build not found' }, { status: 404 });
+            if (!existingApp) {
+                return NextResponse.json({ success: false, error: 'App not found' }, { status: 404 });
             }
 
-            // Delete the build from database
-            await prisma.build.delete({
-                where: { buildId }
+            // Delete the app from database
+            await prisma.app.delete({
+                where: { appId }
             });
 
             // Schedule cleanup job for file system cleanup
             const { addCleanupJob } = await import('@/lib/queue');
-            await addCleanupJob(buildId);
+            await addCleanupJob(appId);
 
             return NextResponse.json({
                 success: true,
-                message: 'Build deleted successfully'
+                message: 'App deleted successfully'
             });
         }
 
         return NextResponse.json({ success: false, error: 'Invalid request' }, { status: 400 });
     } catch (error) {
-        console.error('Error deleting build:', error);
+        console.error('Error deleting app:', error);
         return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
 }

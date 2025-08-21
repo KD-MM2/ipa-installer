@@ -1,6 +1,6 @@
 import { Queue } from 'bullmq';
-import { redisConnection } from '../redis';
-import { IpaProcessJobData, QUEUE_NAMES } from '../../types/queue';
+import { redisConnection } from './redis';
+import { IpaProcessJobData, QUEUE_NAMES } from '../types/queue';
 
 // Tạo queue cho xử lý IPA
 export const ipaProcessQueue = new Queue(QUEUE_NAMES.IPA_PROCESS, {
@@ -37,7 +37,7 @@ export async function addIpaProcessJob(data: IpaProcessJobData) {
             priority: 1 // Priority cao cho xử lý IPA
         });
 
-        console.log(`📦 Added IPA process job: ${job.id} for build: ${data.buildId}`);
+        console.log(`📦 Added IPA process job: ${job.id} for app: ${data.appId}`);
         return job;
     } catch (error) {
         console.error('❌ Error adding IPA process job:', error);
@@ -46,18 +46,18 @@ export async function addIpaProcessJob(data: IpaProcessJobData) {
 }
 
 // Function để thêm job cleanup
-export async function addCleanupJob(buildId: string, delay?: number) {
+export async function addCleanupJob(appId: string, delay?: number) {
     try {
         const job = await cleanupQueue.add(
             'cleanup-expired',
-            { buildId },
+            { appId },
             {
                 delay: delay || 0, // Delay trong milliseconds
                 priority: 5 // Priority thấp hơn
             }
         );
 
-        console.log(`🧹 Added cleanup job: ${job.id} for build: ${buildId}`);
+        console.log(`🧹 Added cleanup job: ${job.id} for app: ${appId}`);
         return job;
     } catch (error) {
         console.error('❌ Error adding cleanup job:', error);

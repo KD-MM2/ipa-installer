@@ -9,7 +9,7 @@ import 'dotenv/config';
 
 import './ipa-process-worker';
 import './cleanup-worker';
-import { scheduleExpiredBuildsCleanup } from './cleanup-worker';
+import { scheduleExpiredAppsCleanup } from './cleanup-worker';
 import { checkRedisConnection, closeRedisConnection } from '../lib/redis';
 
 console.log('🚀 Starting IPA Installer Workers...');
@@ -44,7 +44,7 @@ function schedulePeriodicCleanup() {
     setInterval(async () => {
         try {
             console.log('⏰ Running periodic cleanup check...');
-            const cleanedCount = await scheduleExpiredBuildsCleanup();
+            const cleanedCount = await scheduleExpiredAppsCleanup();
             console.log(`🧹 Scheduled cleanup for ${cleanedCount} expired builds`);
         } catch (error) {
             console.error('❌ Error during periodic cleanup:', error);
@@ -55,7 +55,7 @@ function schedulePeriodicCleanup() {
     setTimeout(async () => {
         try {
             console.log('🧹 Running initial cleanup check...');
-            const cleanedCount = await scheduleExpiredBuildsCleanup();
+            const cleanedCount = await scheduleExpiredAppsCleanup();
             console.log(`🗑️ Scheduled cleanup for ${cleanedCount} expired builds`);
         } catch (error) {
             console.error('❌ Error during initial cleanup:', error);

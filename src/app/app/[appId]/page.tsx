@@ -5,8 +5,9 @@ import { useParams } from 'next/navigation';
 import QRCode from 'qrcode';
 import { api } from '@/lib/axios-client';
 import Link from 'next/link';
-interface BuildInfo {
-    buildId: string;
+
+interface AppInfo {
+    appId: string;
     appName: string;
     bundleId: string;
     version: string;
@@ -29,38 +30,38 @@ interface BuildInfo {
     updatedAt: string;
 }
 
-export default function BuildDetailPage() {
+export default function AppDetailPage() {
     const params = useParams();
-    const buildId = params.buildId as string;
-    const [build, setBuild] = useState<BuildInfo | null>(null);
+    const appId = params.appId as string;
+    const [app, setApp] = useState<AppInfo | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isInstalling, setIsInstalling] = useState(false);
     const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
 
     useEffect(() => {
-        if (!buildId) return;
+        if (!appId) return;
 
-        const fetchBuildInfo = async () => {
+        const fetchAppInfo = async () => {
             try {
-                const response = await api.get(`/api/status?buildId=${buildId}`);
+                const response = await api.get(`/api/status?appId=${appId}`);
                 const data = response.data;
 
-                if (data.success && data.build) {
-                    setBuild(data.build);
+                if (data.success && data.app) {
+                    setApp(data.app);
                 } else {
-                    setError('Build không tồn tại hoặc đã bị xóa');
+                    setError('App không tồn tại hoặc đã bị xóa');
                 }
             } catch (err) {
-                console.error('Error fetching build info:', err);
-                setError('Không thể tải thông tin build');
+                console.error('Error fetching app info:', err);
+                setError('Không thể tải thông tin app');
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchBuildInfo();
-    }, [buildId]);
+        fetchAppInfo();
+    }, [appId]);
 
     useEffect(() => {
         const generateQRCode = async () => {
@@ -84,14 +85,14 @@ export default function BuildDetailPage() {
     }, []);
 
     const handleInstall = async () => {
-        if (!build) return;
+        if (!app) return;
 
         setIsInstalling(true);
 
         try {
             // Increment download count first
             const downloadResponse = await api.post('/api/download', {
-                buildId: build.buildId
+                appId: app.appId
             });
 
             if (downloadResponse.status !== 200) {
@@ -102,12 +103,12 @@ export default function BuildDetailPage() {
 
             // On iOS, this will trigger the app installation
             // The plist URL contains the manifest for itms-services
-            const installUrl = `itms-services://?action=download-manifest&url=${encodeURIComponent(build.plistUrl)}`;
+            const installUrl = `itms-services://?action=download-manifest&url=${encodeURIComponent(app.plistUrl)}`;
             window.location.href = installUrl;
 
             // Update local download count
             const downloadData = downloadResponse.data;
-            setBuild((prev) =>
+            setApp((prev) =>
                 prev
                     ? {
                           ...prev,
@@ -137,15 +138,15 @@ export default function BuildDetailPage() {
     };
 
     const isExpired = (): boolean => {
-        if (!build?.expiresAt) return false;
-        return new Date(build.expiresAt) < new Date();
+        if (!app?.expiresAt) return false;
+        return new Date(app.expiresAt) < new Date();
     };
 
     const canDownload = (): boolean => {
-        if (!build) return false;
-        if (build.status !== 'active') return false;
+        if (!app) return false;
+        if (app.status !== 'active') return false;
         if (isExpired()) return false;
-        if (build.maxDownloads && build.downloadCount >= build.maxDownloads) return false;
+        if (app.maxDownloads && app.downloadCount >= app.maxDownloads) return false;
         return true;
     };
 
@@ -184,18 +185,18 @@ export default function BuildDetailPage() {
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Đang tải thông tin build...</p>
+                    <p className="text-gray-600">Đang tải thông tin app...</p>
                 </div>
             </div>
         );
     }
 
-    if (error || !build) {
+    if (error || !app) {
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="text-center max-w-md mx-auto p-8">
                     <div className="text-6xl mb-4">❌</div>
-                    <h1 className="text-2xl font-bold text-gray-900 mb-4">Build không tìm thấy</h1>
+                    <h1 className="text-2xl font-bold text-gray-900 mb-4">App không tìm thấy</h1>
                     <p className="text-gray-600 mb-6">{error}</p>
                     <Link href="/" className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                         Về trang chủ
@@ -211,7 +212,7 @@ export default function BuildDetailPage() {
                 {/* Header */}
                 <div className="text-center mb-8">
                     <h1 className="text-3xl font-bold text-gray-900 mb-2">📱 Chi tiết ứng dụng</h1>
-                    <p className="text-gray-600">Thông tin và link cài đặt cho {build.displayName || build.appName}</p>
+                    <p className="text-gray-600">Thông tin và link cài đặt cho {app.displayName || app.appName}</p>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -223,8 +224,8 @@ export default function BuildDetailPage() {
                                 {/* App Icon */}
                                 <div className="flex-shrink-0">
                                     <img
-                                        src={`/assets/icons/builds/${build.buildId}/icon.png`}
-                                        alt={`${build.appName} icon`}
+                                        src={`/assets/icons/apps/${app.appId}/icon.png`}
+                                        alt={`${app.appName} icon`}
                                         className="w-20 h-20 rounded-xl shadow-md"
                                         onError={(e) => {
                                             // Hide the image and show fallback instead
@@ -238,24 +239,24 @@ export default function BuildDetailPage() {
                                 {/* App Details */}
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center space-x-3 mb-3">
-                                        <h2 className="text-2xl font-bold text-gray-900 truncate">{build.displayName || build.appName}</h2>
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(build.status)}`}>{getStatusText(build.status)}</span>
+                                        <h2 className="text-2xl font-bold text-gray-900 truncate">{app.displayName || app.appName}</h2>
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(app.status)}`}>{getStatusText(app.status)}</span>
                                     </div>
 
                                     <div className="space-y-2 text-sm text-gray-600">
                                         <div>
-                                            <span className="font-medium">Bundle ID:</span> {build.bundleId}
+                                            <span className="font-medium">ID Gói:</span> {app.bundleId}
                                         </div>
                                         <div>
-                                            <span className="font-medium">Version:</span> {build.version} ({build.buildNumber})
+                                            <span className="font-medium">Phiên bản:</span> {app.version} ({app.buildNumber})
                                         </div>
-                                        {build.minimumOSVersion && (
+                                        {app.minimumOSVersion && (
                                             <div>
-                                                <span className="font-medium">Minimum iOS:</span> {build.minimumOSVersion}
+                                                <span className="font-medium">iOS Tối thiểu:</span> {app.minimumOSVersion}
                                             </div>
                                         )}
                                         <div>
-                                            <span className="font-medium">File size:</span> {formatFileSize(build.fileSize)}
+                                            <span className="font-medium">Kích thước:</span> {formatFileSize(app.fileSize)}
                                         </div>
                                     </div>
                                 </div>
@@ -265,19 +266,19 @@ export default function BuildDetailPage() {
                             <div className="mt-6 pt-6 border-t border-gray-200">
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
                                     <div>
-                                        <div className="text-2xl font-bold text-blue-600">{build.downloadCount}</div>
+                                        <div className="text-2xl font-bold text-blue-600">{app.downloadCount}</div>
                                         <div className="text-sm text-gray-600">Lượt tải</div>
                                     </div>
                                     <div>
-                                        <div className="text-2xl font-bold text-green-600">{build.maxDownloads ? build.maxDownloads - build.downloadCount : '∞'}</div>
+                                        <div className="text-2xl font-bold text-green-600">{app.maxDownloads ? app.maxDownloads - app.downloadCount : '∞'}</div>
                                         <div className="text-sm text-gray-600">Còn lại</div>
                                     </div>
                                     <div>
-                                        <div className="text-2xl font-bold text-purple-600">{build.expiresAt ? Math.max(0, Math.ceil((new Date(build.expiresAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : '∞'}</div>
+                                        <div className="text-2xl font-bold text-purple-600">{app.expiresAt ? Math.max(0, Math.ceil((new Date(app.expiresAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : '∞'}</div>
                                         <div className="text-sm text-gray-600">Ngày còn lại</div>
                                     </div>
                                     <div>
-                                        <div className="text-2xl font-bold text-gray-600">{formatDate(build.createdAt).split(' ')[0]}</div>
+                                        <div className="text-2xl font-bold text-gray-600">{formatDate(app.createdAt).split(' ')[0]}</div>
                                         <div className="text-sm text-gray-600">Ngày tạo</div>
                                     </div>
                                 </div>
@@ -312,7 +313,7 @@ export default function BuildDetailPage() {
                             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                                 <div className="flex items-center space-x-2 text-red-800">
                                     <span>⚠️</span>
-                                    <span className="font-medium">{isExpired() ? 'Build đã hết hạn' : build.status !== 'active' ? 'Build không khả dụng' : 'Đã hết số lượt tải cho phép'}</span>
+                                    <span className="font-medium">{isExpired() ? 'Ứng dụng đã hết hạn' : app.status !== 'active' ? 'Ứng dụng không khả dụng' : 'Đã hết số lượt tải cho phép'}</span>
                                 </div>
                             </div>
                         )}
@@ -377,26 +378,26 @@ export default function BuildDetailPage() {
                             </div>
                         </div>
 
-                        {/* Build Info */}
+                        {/* App Info */}
                         <div className="bg-white rounded-lg shadow-sm p-6">
-                            <h3 className="font-semibold text-gray-900 mb-4">ℹ️ Thông tin build</h3>
+                            <h3 className="font-semibold text-gray-900 mb-4">ℹ️ Thông tin ứng dụng</h3>
                             <div className="space-y-3 text-sm">
                                 <div>
-                                    <span className="text-gray-600">Build ID:</span>
-                                    <code className="ml-2 text-xs bg-gray-100 px-2 py-1 text-black rounded">{build.buildId}</code>
+                                    <span className="text-gray-600">ID Ứng dụng:</span>
+                                    <code className="ml-2 text-xs bg-gray-100 px-2 py-1 text-black rounded">{app.appId}</code>
                                 </div>
                                 <div>
-                                    <span className="text-gray-600">File name:</span>
-                                    <span className="ml-2 text-gray-900">{build.originalFilename}</span>
+                                    <span className="text-gray-600">Tên tệp:</span>
+                                    <span className="ml-2 text-gray-900">{app.originalFilename}</span>
                                 </div>
                                 <div>
                                     <span className="text-gray-600">Tạo lúc:</span>
-                                    <span className="ml-2 text-gray-900">{formatDate(build.createdAt)}</span>
+                                    <span className="ml-2 text-gray-900">{formatDate(app.createdAt)}</span>
                                 </div>
-                                {build.expiresAt && (
+                                {app.expiresAt && (
                                     <div>
                                         <span className="text-gray-600">Hết hạn:</span>
-                                        <span className="ml-2 text-gray-900">{formatDate(build.expiresAt)}</span>
+                                        <span className="ml-2 text-gray-900">{formatDate(app.expiresAt)}</span>
                                     </div>
                                 )}
                             </div>

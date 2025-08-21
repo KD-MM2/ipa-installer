@@ -10,10 +10,10 @@ export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
         const jobId = searchParams.get('jobId');
-        const buildId = searchParams.get('buildId');
+        const appId = searchParams.get('appId');
 
-        if (!jobId && !buildId) {
-            return NextResponse.json({ success: false, error: 'jobId or buildId is required' }, { status: 400 });
+        if (!jobId && !appId) {
+            return NextResponse.json({ success: false, error: 'jobId or appId is required' }, { status: 400 });
         }
 
         const response: any = {};
@@ -24,13 +24,13 @@ export async function GET(request: NextRequest) {
             response.job = jobStatus;
         }
 
-        // Get build info if buildId provided
-        if (buildId) {
-            const build = await prisma.build.findUnique({
-                where: { buildId },
+        // Get app info if appId provided
+        if (appId) {
+            const app = await prisma.app.findUnique({
+                where: { appId },
                 select: {
                     id: true,
-                    buildId: true,
+                    appId: true,
                     appName: true,
                     bundleId: true,
                     version: true,
@@ -49,11 +49,11 @@ export async function GET(request: NextRequest) {
                 }
             });
 
-            if (build) {
-                const urls = UrlUtils.getAllUrls(build.buildId, build.originalFilename, build.hasIcon);
-                response.build = {
-                    ...build,
-                    fileSize: build.fileSize.toString(), // Convert BigInt to string for JSON
+            if (app) {
+                const urls = UrlUtils.getAllUrls(app.appId, app.originalFilename, app.hasIcon);
+                response.app = {
+                    ...app,
+                    fileSize: app.fileSize.toString(), // Convert BigInt to string for JSON
                     iconUrl: urls.iconUrl,
                     ipaUrl: urls.ipaUrl,
                     plistUrl: urls.plistUrl,

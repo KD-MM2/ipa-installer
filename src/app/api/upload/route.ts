@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { writeFile, mkdir } from 'fs/promises';
 import { existsSync } from 'fs';
 import path from 'path';
-import { generateBuildId } from '@/lib/ipa-utils';
+import { generateAppId } from '@/lib/ipa-utils';
 import { addIpaProcessJob } from '@/lib/queue';
 
 export async function POST(request: NextRequest) {
@@ -31,8 +31,8 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: false, error: 'File too large. Maximum size is 500MB.' }, { status: 400 });
         }
 
-        // Generate unique build ID
-        const buildId = generateBuildId();
+        // Generate unique app ID
+        const appId = generateAppId();
 
         // Create temp directory if not exists
         const tempDir = path.join(process.cwd(), 'temp');
@@ -43,13 +43,13 @@ export async function POST(request: NextRequest) {
         // Save file temporarily
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
-        const tempFilePath = path.join(tempDir, `${buildId}_${file.name}`);
+        const tempFilePath = path.join(tempDir, `${appId}_${file.name}`);
 
         await writeFile(tempFilePath, buffer);
 
         // Add job to queue
         const job = await addIpaProcessJob({
-            buildId,
+            appId,
             filePath: tempFilePath,
             originalFilename: file.name,
             fileSize: file.size,
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
             success: true,
-            buildId,
+            appId,
             jobId: job.id,
             message: 'File uploaded successfully. Processing started.',
             estimatedTime: '2-5 minutes'

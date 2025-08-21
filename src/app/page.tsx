@@ -7,12 +7,12 @@ import Link from 'next/link';
 
 export default function Home() {
     const [uploadResult, setUploadResult] = useState<{
-        buildId: string;
+        appId: string;
         jobId: string;
         estimatedTime: string;
     } | null>(null);
 
-    const handleUploadSuccess = (result: { buildId: string; jobId: string; estimatedTime: string }) => {
+    const handleUploadSuccess = (result: { appId: string; jobId: string; estimatedTime: string }) => {
         setUploadResult(result);
         console.log('Upload successful:', result);
     };

@@ -182,13 +182,13 @@ Response:
 ### Admin - List Builds
 
 ```http
-GET /api/admin/builds?page=1&limit=10&status=active&search=app
+GET /api/admin/apps?page=1&limit=10&status=active&search=app
 ```
 
 ### Admin - Update Build
 
 ```http
-PATCH /api/admin/builds
+PATCH /api/admin/apps
 Content-Type: application/json
 
 {
@@ -204,7 +204,7 @@ Content-Type: application/json
 ### Admin - Delete Build
 
 ```http
-DELETE /api/admin/builds
+DELETE /api/admin/apps
 Content-Type: application/json
 
 {

@@ -1,7 +1,7 @@
 // Định nghĩa các kiểu dữ liệu cho queue jobs
 
 export interface IpaProcessJobData {
-    buildId: string;
+    appId: string;
     filePath: string; // Đường dẫn file .ipa tạm thời
     originalFilename: string;
     fileSize: number;

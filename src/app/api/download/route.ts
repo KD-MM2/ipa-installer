@@ -3,22 +3,22 @@ import { PrismaClient } from '../../../../prisma/prisma';
 
 const prisma = new PrismaClient();
 
-// GET /api/download?buildId=nF2VZ9
+// GET /api/download?appId=nF2VZ9
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
-        const buildId = searchParams.get('buildId');
+        const appId = searchParams.get('appId');
 
-        if (!buildId) {
-            return NextResponse.json({ success: false, error: 'buildId is required' }, { status: 400 });
+        if (!appId) {
+            return NextResponse.json({ success: false, error: 'appId is required' }, { status: 400 });
         }
 
-        // Get build info
-        const build = await prisma.build.findUnique({
-            where: { buildId },
+        // Get app info
+        const app = await prisma.app.findUnique({
+            where: { appId },
             select: {
                 id: true,
-                buildId: true,
+                appId: true,
                 appName: true,
                 version: true,
                 buildNumber: true,
@@ -27,31 +27,31 @@ export async function GET(request: NextRequest) {
             }
         });
 
-        if (!build) {
-            return NextResponse.json({ success: false, error: 'Build not found' }, { status: 404 });
+        if (!app) {
+            return NextResponse.json({ success: false, error: 'App not found' }, { status: 404 });
         }
 
-        return NextResponse.json({ success: true, data: build });
+        return NextResponse.json({ success: true, data: app });
     } catch (error) {
-        console.error('Error fetching build info:', error);
+        console.error('Error fetching app info:', error);
         return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
 }
 
 export async function POST(request: NextRequest) {
     try {
-        const { buildId } = await request.json();
+        const { appId } = await request.json();
 
-        if (!buildId) {
-            return NextResponse.json({ success: false, error: 'buildId is required' }, { status: 400 });
+        if (!appId) {
+            return NextResponse.json({ success: false, error: 'appId is required' }, { status: 400 });
         }
 
-        // Get current build info
-        const build = await prisma.build.findUnique({
-            where: { buildId },
+        // Get current app info
+        const app = await prisma.app.findUnique({
+            where: { appId },
             select: {
                 id: true,
-                buildId: true,
+                appId: true,
                 downloadCount: true,
                 maxDownloads: true,
                 status: true,
@@ -59,27 +59,27 @@ export async function POST(request: NextRequest) {
             }
         });
 
-        if (!build) {
-            return NextResponse.json({ success: false, error: 'Build not found' }, { status: 404 });
+        if (!app) {
+            return NextResponse.json({ success: false, error: 'App not found' }, { status: 404 });
         }
 
-        // Check if build is still downloadable
+        // Check if app is still downloadable
         const now = new Date();
-        const isExpired = build.expiresAt && build.expiresAt < now;
-        const isOverLimit = build.maxDownloads && build.downloadCount >= build.maxDownloads;
+        const isExpired = app.expiresAt && app.expiresAt < now;
+        const isOverLimit = app.maxDownloads && app.downloadCount >= app.maxDownloads;
 
-        if (build.status !== 'active' || isExpired || isOverLimit) {
-            return NextResponse.json({ success: false, error: 'Build is no longer available for download' }, { status: 403 });
+        if (app.status !== 'active' || isExpired || isOverLimit) {
+            return NextResponse.json({ success: false, error: 'App is no longer available for download' }, { status: 403 });
         }
 
         // Increment download count
-        const updatedBuild = await prisma.build.update({
-            where: { id: build.id },
+        const updatedApp = await prisma.app.update({
+            where: { id: app.id },
             data: {
-                downloadCount: build.downloadCount + 1
+                downloadCount: app.downloadCount + 1
             },
             select: {
-                buildId: true,
+                appId: true,
                 downloadCount: true,
                 maxDownloads: true
             }
@@ -87,8 +87,8 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
             success: true,
-            downloadCount: updatedBuild.downloadCount,
-            remainingDownloads: updatedBuild.maxDownloads ? updatedBuild.maxDownloads - updatedBuild.downloadCount : null,
+            downloadCount: updatedApp.downloadCount,
+            remainingDownloads: updatedApp.maxDownloads ? updatedApp.maxDownloads - updatedApp.downloadCount : null,
             message: 'Download count incremented'
         });
     } catch (error) {

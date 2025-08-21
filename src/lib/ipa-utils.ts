@@ -252,8 +252,8 @@ export function validateIpaFile(filePath: string): boolean {
     }
 }
 
-// Function để tạo build ID ngẫu nhiên
-export function generateBuildId(): string {
+// Function để tạo app ID ngẫu nhiên
+export function generateAppId(): string {
     const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
     for (let i = 0; i < 6; i++) {

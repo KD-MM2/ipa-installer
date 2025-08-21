@@ -181,7 +181,7 @@ Cảm ơn bạn đã làm rõ luồng nghiệp vụ! Dưới đây là mô tả 
 
 - **POST `/api/upload`**: upload file, trả về buildId.
 - **GET `/api/builds/:id`**: lấy info chi tiết build/id.
-- **GET `/api/admin/builds`**: datatable admin.
+- **GET `/api/admin/apps`**: datatable admin.
 - **DELETE/PATCH ...**: thao tác quản lý khác.
 
 ---

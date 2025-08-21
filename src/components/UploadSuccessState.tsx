@@ -6,7 +6,7 @@ import { api } from '@/lib/axios-client';
 
 interface UploadSuccessStateProps {
     uploadResult: {
-        buildId: string;
+        appId: string;
         jobId: string;
         estimatedTime: string;
     };
@@ -24,8 +24,8 @@ interface JobStatus {
     failedReason?: string;
 }
 
-interface BuildInfo {
-    buildId: string;
+interface AppInfo {
+    appId: string;
     appName: string;
     bundleId: string;
     version: string;
@@ -37,7 +37,7 @@ interface BuildInfo {
 
 export default function UploadSuccessState({ uploadResult, onReset }: UploadSuccessStateProps) {
     const [jobStatus, setJobStatus] = useState<JobStatus | null>(null);
-    const [buildInfo, setBuildInfo] = useState<BuildInfo | null>(null);
+    const [appInfo, setAppInfo] = useState<AppInfo | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const router = useRouter();
@@ -46,12 +46,12 @@ export default function UploadSuccessState({ uploadResult, onReset }: UploadSucc
     useEffect(() => {
         const pollStatus = async () => {
             try {
-                const response = await api.get(`/api/status?jobId=${uploadResult.jobId}&buildId=${uploadResult.buildId}`);
+                const response = await api.get(`/api/status?jobId=${uploadResult.jobId}&appId=${uploadResult.appId}`);
                 const data = response.data;
 
                 if (data.success) {
                     setJobStatus(data.job);
-                    setBuildInfo(data.build);
+                    setAppInfo(data.app);
                     setLoading(false);
 
                     // Stop polling if job is completed or failed
@@ -82,7 +82,7 @@ export default function UploadSuccessState({ uploadResult, onReset }: UploadSucc
                 clearInterval(pollInterval);
             }
         };
-    }, [uploadResult.jobId, uploadResult.buildId]);
+    }, [uploadResult.jobId, uploadResult.appId]);
 
     const getStatusIcon = () => {
         if (loading) return '⏳';
@@ -124,9 +124,9 @@ export default function UploadSuccessState({ uploadResult, onReset }: UploadSucc
         return jobStatus?.progress?.percentage || 0;
     };
 
-    const handleViewBuild = () => {
-        if (buildInfo && jobStatus?.state === 'completed') {
-            router.push(`/app/${buildInfo.buildId}`);
+    const handleViewApp = () => {
+        if (appInfo && jobStatus?.state === 'completed') {
+            router.push(`/app/${appInfo.appId}`);
         }
     };
 
@@ -156,8 +156,8 @@ export default function UploadSuccessState({ uploadResult, onReset }: UploadSucc
                 <h3 className="font-medium text-gray-900">Thông tin upload:</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     <div>
-                        <span className="text-gray-600">Build ID:</span>
-                        <code className="ml-2 bg-gray-200 px-2 py-1 rounded text-xs text-black">{uploadResult.buildId}</code>
+                        <span className="text-gray-600">App ID:</span>
+                        <code className="ml-2 bg-gray-200 px-2 py-1 rounded text-xs text-black">{uploadResult.appId}</code>
                     </div>
                     <div>
                         <span className="text-gray-600">Job ID:</span>
@@ -174,14 +174,14 @@ export default function UploadSuccessState({ uploadResult, onReset }: UploadSucc
                 </div>
             </div>
 
-            {/* Build Info (when available) */}
-            {buildInfo && (
+            {/* App Info (when available) */}
+            {appInfo && (
                 <div className="bg-blue-50 rounded-lg p-4 space-y-3">
                     <h3 className="font-medium text-gray-900">Thông tin ứng dụng:</h3>
                     <div className="flex items-start space-x-4">
-                        {buildInfo.iconUrl && (
+                        {appInfo.iconUrl && (
                             <img
-                                src={buildInfo.iconUrl}
+                                src={appInfo.iconUrl}
                                 alt="App Icon"
                                 className="w-16 h-16 rounded-lg shadow-sm"
                                 onError={(e) => {
@@ -192,13 +192,13 @@ export default function UploadSuccessState({ uploadResult, onReset }: UploadSucc
                         )}
                         <div className="flex-1 space-y-1 text-sm">
                             <div>
-                                <span className="font-medium text-gray-900">{buildInfo.appName}</span>
+                                <span className="font-medium text-gray-900">{appInfo.appName}</span>
                             </div>
                             <div className="text-gray-600">
-                                Version: {buildInfo.version} ({buildInfo.buildNumber})
+                                Version: {appInfo.version} ({appInfo.buildNumber})
                             </div>
-                            <div className="text-gray-600">Bundle ID: {buildInfo.bundleId}</div>
-                            <div className="text-gray-500 text-xs">Tạo lúc: {new Date(buildInfo.createdAt).toLocaleString('vi-VN')}</div>
+                            <div className="text-gray-600">Bundle ID: {appInfo.bundleId}</div>
+                            <div className="text-gray-500 text-xs">Tạo lúc: {new Date(appInfo.createdAt).toLocaleString('vi-VN')}</div>
                         </div>
                     </div>
                 </div>
@@ -210,8 +210,8 @@ export default function UploadSuccessState({ uploadResult, onReset }: UploadSucc
                     Upload file khác
                 </button>
 
-                {jobStatus?.state === 'completed' && buildInfo && (
-                    <button onClick={handleViewBuild} className="btn px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                {jobStatus?.state === 'completed' && appInfo && (
+                    <button onClick={handleViewApp} className="btn px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                         Xem chi tiết & Tải xuống
                     </button>
                 )}

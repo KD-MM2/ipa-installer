@@ -1,86 +1,86 @@
 /**
- * Utility functions for generating URLs based on buildId and filenames
+ * Utility functions for generating URLs based on appId and filenames
  */
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-const MINIO_BASE_URL = process.env.MINIO_EXTERNAL_URL || 'http://192.168.0.2:9000';
-const BUCKET_NAME = process.env.MINIO_BUCKET_NAME || 'ipa-installer';
+const MINIO_BASE_URL = process.env.MINIO_BASE_URL || 'http://localhost:9000';
+const BUCKET_NAME = process.env.BUCKET_NAME || 'ipa-installer';
 
 export class UrlUtils {
     /**
-     * Generate IPA download URL (proxied through Next.js)
+     * Generate IPA download URL
      */
-    static getIpaUrl(buildId: string, originalFilename: string): string {
-        return `${BASE_URL}/assets/files/builds/${buildId}/${originalFilename}`;
+    static getIpaUrl(appId: string, originalFilename: string): string {
+        return `${BASE_URL}/assets/files/apps/${appId}/${originalFilename}`;
     }
 
     /**
-     * Generate icon URL if hasIcon is true (proxied through Next.js)
+     * Generate icon URL
      */
-    static getIconUrl(buildId: string, hasIcon: boolean): string | null {
+    static getIconUrl(appId: string, hasIcon: boolean): string | null {
         if (!hasIcon) return null;
-        return `${BASE_URL}/assets/icons/builds/${buildId}/icon.png`;
+        return `${BASE_URL}/assets/icons/apps/${appId}/icon.png`;
     }
 
     /**
-     * Generate plist URL for iTunes installation (proxied through Next.js)
+     * Generate plist URL for iOS installation
      */
-    static getPlistUrl(buildId: string): string {
-        return `${BASE_URL}/assets/files/builds/${buildId}/install.plist`;
+    static getPlistUrl(appId: string): string {
+        return `${BASE_URL}/assets/files/apps/${appId}/install.plist`;
     }
 
     /**
-     * Generate iTunes installation link
+     * Generate iTunes installation URL
      */
-    static getInstallationUrl(buildId: string): string {
-        const plistUrl = this.getPlistUrl(buildId);
+    static getInstallationUrl(appId: string): string {
+        const plistUrl = this.getPlistUrl(appId);
         return `itms-services://?action=download-manifest&url=${encodeURIComponent(plistUrl)}`;
     }
 
     /**
      * Generate app detail page URL
      */
-    static getAppDetailUrl(buildId: string): string {
-        return `${BASE_URL}/app/${buildId}`;
+    static getAppDetailUrl(appId: string): string {
+        return `${BASE_URL}/app/${appId}`;
     }
 
     /**
-     * Generate direct MinIO URLs (for internal operations only)
+     * Generate direct IPA URL from MinIO/S3
      */
-    static getDirectIpaUrl(buildId: string, originalFilename: string): string {
-        return `${MINIO_BASE_URL}/${BUCKET_NAME}/builds/${buildId}/${originalFilename}`;
+    static getDirectIpaUrl(appId: string, originalFilename: string): string {
+        return `${MINIO_BASE_URL}/${BUCKET_NAME}/apps/${appId}/${originalFilename}`;
     }
 
-    static getDirectIconUrl(buildId: string, hasIcon: boolean): string | null {
+    static getDirectIconUrl(appId: string, hasIcon: boolean): string | null {
         if (!hasIcon) return null;
-        return `${MINIO_BASE_URL}/${BUCKET_NAME}/builds/${buildId}/icon.png`;
+        return `${MINIO_BASE_URL}/${BUCKET_NAME}/apps/${appId}/icon.png`;
     }
 
-    static getDirectPlistUrl(buildId: string): string {
-        return `${MINIO_BASE_URL}/${BUCKET_NAME}/builds/${buildId}/install.plist`;
+    static getDirectPlistUrl(appId: string): string {
+        return `${MINIO_BASE_URL}/${BUCKET_NAME}/apps/${appId}/install.plist`;
     }
 
     /**
-     * Generate all URLs for a build
+     * Get all URLs for a given app
      */
-    static getAllUrls(buildId: string, originalFilename: string, hasIcon: boolean) {
+    static getAllUrls(appId: string, originalFilename: string, hasIcon: boolean) {
         return {
-            ipaUrl: this.getIpaUrl(buildId, originalFilename),
-            iconUrl: this.getIconUrl(buildId, hasIcon),
-            plistUrl: this.getPlistUrl(buildId),
-            installationUrl: this.getInstallationUrl(buildId),
-            appDetailUrl: this.getAppDetailUrl(buildId)
+            ipaUrl: this.getIpaUrl(appId, originalFilename),
+            iconUrl: this.getIconUrl(appId, hasIcon),
+            plistUrl: this.getPlistUrl(appId),
+            installationUrl: this.getInstallationUrl(appId),
+            appDetailUrl: this.getAppDetailUrl(appId)
         };
     }
 
     /**
-     * Generate S3 keys for file storage
+     * Get S3/MinIO object keys
      */
-    static getS3Keys(buildId: string, originalFilename: string) {
+    static getS3Keys(appId: string, originalFilename: string) {
         return {
-            ipaKey: `builds/${buildId}/${originalFilename}`,
-            iconKey: `builds/${buildId}/icon.png`,
-            plistKey: `builds/${buildId}/install.plist`
+            ipaKey: `apps/${appId}/${originalFilename}`,
+            iconKey: `apps/${appId}/icon.png`,
+            plistKey: `apps/${appId}/install.plist`
         };
     }
 }

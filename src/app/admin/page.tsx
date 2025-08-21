@@ -5,9 +5,9 @@ import { StorageUtils } from '@/lib/storage-utils';
 import { api } from '@/lib/axios-client';
 import Link from 'next/link';
 
-interface Build {
+interface App {
     id: string;
-    buildId: string;
+    appId: string;
     appName: string;
     bundleId: string;
     version: string;
@@ -40,7 +40,7 @@ interface Pagination {
 }
 
 interface SortConfig {
-    key: keyof Build | '';
+    key: keyof App | '';
     direction: 'asc' | 'desc';
 }
 
@@ -64,7 +64,7 @@ const statusText = {
 };
 
 export default function AdminPage() {
-    const [builds, setBuilds] = useState<Build[]>([]);
+    const [apps, setApps] = useState<App[]>([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
     const [pagination, setPagination] = useState<Pagination>({
@@ -78,13 +78,13 @@ export default function AdminPage() {
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [sortConfig, setSortConfig] = useState<SortConfig>({ key: '', direction: 'desc' });
-    const [editingBuild, setEditingBuild] = useState<string | null>(null);
+    const [editingApp, setEditingApp] = useState<string | null>(null);
     const [editData, setEditData] = useState({
         status: '',
         maxDownloads: '',
         expiresAt: ''
     });
-    const [selectedBuilds, setSelectedBuilds] = useState<string[]>([]);
+    const [selectedApps, setSelectedApps] = useState<string[]>([]);
     const [confirmModal, setConfirmModal] = useState<ConfirmModal>({
         isOpen: false,
         title: '',
@@ -104,13 +104,13 @@ export default function AdminPage() {
         return statusText[status as keyof typeof statusText] || status;
     };
 
-    // Memoized sorted and filtered builds
-    const sortedBuilds = useMemo(() => {
-        if (!sortConfig.key) return builds;
+    // Memoized sorted and filtered apps
+    const sortedApps = useMemo(() => {
+        if (!sortConfig.key) return apps;
 
-        return [...builds].sort((a, b) => {
-            const aValue = a[sortConfig.key as keyof Build];
-            const bValue = b[sortConfig.key as keyof Build];
+        return [...apps].sort((a, b) => {
+            const aValue = a[sortConfig.key as keyof App];
+            const bValue = b[sortConfig.key as keyof App];
 
             if (aValue === null || aValue === undefined) return 1;
             if (bValue === null || bValue === undefined) return -1;
@@ -124,9 +124,9 @@ export default function AdminPage() {
             if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
             return 0;
         });
-    }, [builds, sortConfig]);
+    }, [apps, sortConfig]);
 
-    const fetchBuilds = useCallback(async () => {
+    const fetchApps = useCallback(async () => {
         setLoading(true);
         try {
             const params = new URLSearchParams({
@@ -136,37 +136,37 @@ export default function AdminPage() {
                 ...(statusFilter !== 'all' && { status: statusFilter })
             });
 
-            const response = await api.get(`/api/admin/builds?${params}`);
+            const response = await api.get(`/api/admin/apps?${params}`);
             const data = response.data;
 
             if (data.success) {
-                setBuilds(data.data);
+                setApps(data.data);
                 setPagination(data.pagination);
 
                 // Calculate stats
                 const newStats = {
                     total: data.pagination.total,
-                    active: data.data.filter((b: Build) => b.status === 'active').length,
-                    processing: data.data.filter((b: Build) => b.status === 'processing').length,
-                    expired: data.data.filter((b: Build) => b.status === 'expired').length,
-                    totalDownloads: data.data.reduce((sum: number, b: Build) => sum + b.downloadCount, 0)
+                    active: data.data.filter((b: App) => b.status === 'active').length,
+                    processing: data.data.filter((b: App) => b.status === 'processing').length,
+                    expired: data.data.filter((b: App) => b.status === 'expired').length,
+                    totalDownloads: data.data.reduce((sum: number, b: App) => sum + b.downloadCount, 0)
                 };
                 setStats(newStats);
             }
         } catch (error) {
-            console.error('Error fetching builds:', error);
+            console.error('Error fetching apps:', error);
         }
         setLoading(false);
     }, [pagination.page, pagination.limit, search, statusFilter]);
 
     useEffect(() => {
-        fetchBuilds();
-    }, [fetchBuilds]);
+        fetchApps();
+    }, [fetchApps]);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         setPagination({ ...pagination, page: 1 });
-        fetchBuilds();
+        fetchApps();
     };
 
     const handleStatusFilter = (status: string) => {
@@ -174,7 +174,7 @@ export default function AdminPage() {
         setPagination({ ...pagination, page: 1 });
     };
 
-    const handleSort = (key: keyof Build) => {
+    const handleSort = (key: keyof App) => {
         setSortConfig((prev) => ({
             key,
             direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
@@ -182,15 +182,15 @@ export default function AdminPage() {
     };
 
     const handleSelectAll = () => {
-        if (selectedBuilds.length === builds.length) {
-            setSelectedBuilds([]);
+        if (selectedApps.length === apps.length) {
+            setSelectedApps([]);
         } else {
-            setSelectedBuilds(builds.map((build) => build.buildId));
+            setSelectedApps(apps.map((app) => app.appId));
         }
     };
 
-    const handleSelectBuild = (buildId: string) => {
-        setSelectedBuilds((prev) => (prev.includes(buildId) ? prev.filter((id) => id !== buildId) : [...prev, buildId]));
+    const handleSelectApp = (appId: string) => {
+        setSelectedApps((prev) => (prev.includes(appId) ? prev.filter((id) => id !== appId) : [...prev, appId]));
     };
 
     const openConfirmModal = (title: string, message: string, confirmText: string, action: () => void, type: 'danger' | 'warning' | 'info' = 'danger') => {
@@ -208,25 +208,25 @@ export default function AdminPage() {
         setConfirmModal((prev) => ({ ...prev, isOpen: false }));
     };
 
-    const handleDelete = async (buildId: string) => {
-        openConfirmModal('Xóa Build', `Bạn có chắc muốn xóa vĩnh viễn build này khỏi hệ thống? Hành động này không thể hoàn tác.`, 'Xóa', async () => {
-            setActionLoading(buildId);
+    const handleDelete = async (appId: string) => {
+        openConfirmModal('Xóa Ứng dụng', `Bạn có chắc muốn xóa vĩnh viễn ứng dụng này khỏi hệ thống? Hành động này không thể hoàn tác.`, 'Xóa', async () => {
+            setActionLoading(appId);
             try {
-                const response = await api.delete('/api/admin/builds', {
-                    data: { buildId }
+                const response = await api.delete('/api/admin/apps', {
+                    data: { appId }
                 });
 
                 const data = response.data;
                 if (data.success) {
-                    alert('Build đã được xóa vĩnh viễn thành công');
-                    fetchBuilds();
-                    setSelectedBuilds((prev) => prev.filter((id) => id !== buildId));
+                    alert('Ứng dụng đã được xóa thành công');
+                    fetchApps();
+                    setSelectedApps((prev) => prev.filter((id) => id !== appId));
                 } else {
                     alert(`Lỗi: ${data.error}`);
                 }
             } catch (error) {
-                console.error('Error deleting build:', error);
-                alert('Có lỗi xảy ra khi xóa build');
+                console.error('Error deleting app:', error);
+                alert('Có lỗi xảy ra khi xóa ứng dụng');
             } finally {
                 setActionLoading(null);
                 closeConfirmModal();
@@ -235,27 +235,27 @@ export default function AdminPage() {
     };
 
     const handleBulkDelete = () => {
-        if (selectedBuilds.length === 0) return;
+        if (selectedApps.length === 0) return;
 
-        openConfirmModal('Xóa nhiều Builds', `Bạn có chắc muốn xóa vĩnh viễn ${selectedBuilds.length} builds đã chọn? Hành động này không thể hoàn tác.`, 'Xóa tất cả', async () => {
+        openConfirmModal('Xóa nhiều Ứng dụng', `Bạn có chắc muốn xóa vĩnh viễn ${selectedApps.length} ứng dụng đã chọn? Hành động này không thể hoàn tác.`, 'Xóa tất cả', async () => {
             setActionLoading('bulk-delete');
             try {
                 // Use bulk delete API
-                const response = await api.delete('/api/admin/builds', {
-                    data: { buildIds: selectedBuilds }
+                const response = await api.delete('/api/admin/apps', {
+                    data: { appIds: selectedApps }
                 });
 
                 const data = response.data;
                 if (data.success) {
-                    alert(`Đã xóa vĩnh viễn ${data.deletedCount || selectedBuilds.length} builds thành công`);
-                    fetchBuilds();
-                    setSelectedBuilds([]);
+                    alert(`Đã xóa vĩnh viễn ${data.deletedCount || selectedApps.length} ứng dụng thành công`);
+                    fetchApps();
+                    setSelectedApps([]);
                 } else {
                     alert(`Lỗi: ${data.error}`);
                 }
             } catch (error) {
-                console.error('Error bulk deleting builds:', error);
-                alert('Có lỗi xảy ra khi xóa builds');
+                console.error('Error bulk deleting apps:', error);
+                alert('Có lỗi xảy ra khi xóa ứng dụng');
             } finally {
                 setActionLoading(null);
                 closeConfirmModal();
@@ -264,18 +264,18 @@ export default function AdminPage() {
     };
 
     const handleExport = () => {
-        const csvData = builds.map((build) => ({
-            'Build ID': build.buildId,
-            'App Name': build.appName,
-            'Bundle ID': build.bundleId,
-            Version: build.version,
-            'Build Number': build.buildNumber,
-            Status: build.status,
-            Downloads: build.downloadCount,
-            'Max Downloads': build.maxDownloads || 'Unlimited',
-            'File Size': StorageUtils.formatFileSize(parseInt(build.fileSize)),
-            'Created At': formatDate(build.createdAt),
-            'Expires At': build.expiresAt ? formatDate(build.expiresAt) : 'Never'
+        const csvData = apps.map((app) => ({
+            'App ID': app.appId,
+            'App Name': app.appName,
+            'Bundle ID': app.bundleId,
+            Version: app.version,
+            'Build Number': app.buildNumber,
+            Status: app.status,
+            Downloads: app.downloadCount,
+            'Max Downloads': app.maxDownloads || 'Unlimited',
+            'File Size': StorageUtils.formatFileSize(parseInt(app.fileSize)),
+            'Created At': formatDate(app.createdAt),
+            'Expires At': app.expiresAt ? formatDate(app.expiresAt) : 'Never'
         }));
 
         const csvContent = [
@@ -291,23 +291,23 @@ export default function AdminPage() {
         const link = document.createElement('a');
         const url = URL.createObjectURL(blob);
         link.setAttribute('href', url);
-        link.setAttribute('download', `builds-export-${new Date().toISOString().split('T')[0]}.csv`);
+        link.setAttribute('download', `apps-export-${new Date().toISOString().split('T')[0]}.csv`);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
     };
 
-    const handleDownload = async (build: Build) => {
-        if (!build || build.status !== 'active') {
-            alert('Build không khả dụng để cài đặt');
+    const handleDownload = async (app: App) => {
+        if (!app || app.status !== 'active') {
+            alert('Ứng dụng không khả dụng để cài đặt');
             return;
         }
 
         try {
             // Increment download count first
             const response = await api.post('/api/download', {
-                buildId: build.buildId
+                appId: app.appId
             });
 
             if (response.status !== 200) {
@@ -317,35 +317,35 @@ export default function AdminPage() {
             }
 
             // Use itms-services link for direct installation (like in app detail page)
-            const installUrl = `itms-services://?action=download-manifest&url=${encodeURIComponent(build.plistUrl)}`;
+            const installUrl = `itms-services://?action=download-manifest&url=${encodeURIComponent(app.plistUrl)}`;
             window.location.href = installUrl;
 
-            // Refresh the build list to show updated download count
-            fetchBuilds();
+            // Refresh the app list to show updated download count
+            fetchApps();
         } catch (error) {
             console.error('Error downloading app:', error);
             alert('Có lỗi xảy ra khi tải ứng dụng');
         }
     };
 
-    const startEdit = (build: Build) => {
-        setEditingBuild(build.buildId);
+    const startEdit = (app: App) => {
+        setEditingApp(app.appId);
         setEditData({
-            status: build.status,
-            maxDownloads: build.maxDownloads?.toString() || '',
-            expiresAt: build.expiresAt ? new Date(build.expiresAt).toISOString().slice(0, 16) : ''
+            status: app.status,
+            maxDownloads: app.maxDownloads?.toString() || '',
+            expiresAt: app.expiresAt ? new Date(app.expiresAt).toISOString().slice(0, 16) : ''
         });
     };
 
     const cancelEdit = () => {
-        setEditingBuild(null);
+        setEditingApp(null);
         setEditData({ status: '', maxDownloads: '', expiresAt: '' });
     };
 
     const saveEdit = async () => {
-        if (!editingBuild) return;
+        if (!editingApp) return;
 
-        setActionLoading(editingBuild);
+        setActionLoading(editingApp);
         try {
             const updates: {
                 status: string;
@@ -363,8 +363,8 @@ export default function AdminPage() {
                 updates.expiresAt = editData.expiresAt;
             }
 
-            const response = await api.patch('/api/admin/builds', {
-                buildId: editingBuild,
+            const response = await api.patch('/api/admin/apps', {
+                appId: editingApp,
                 updates
             });
 
@@ -372,19 +372,19 @@ export default function AdminPage() {
             if (data.success) {
                 alert('Cập nhật thành công');
                 cancelEdit();
-                fetchBuilds();
+                fetchApps();
             } else {
                 alert(`Lỗi: ${data.error}`);
             }
         } catch (error) {
-            console.error('Error updating build:', error);
+            console.error('Error updating app:', error);
             alert('Có lỗi xảy ra khi cập nhật');
         } finally {
             setActionLoading(null);
         }
     };
 
-    const getSortIcon = (key: keyof Build) => {
+    const getSortIcon = (key: keyof App) => {
         if (sortConfig.key !== key) {
             return <span className="text-gray-400">⇅</span>;
         }
@@ -452,7 +452,7 @@ export default function AdminPage() {
                                 </div>
                             </div>
                             <div className="ml-4">
-                                <p className="text-sm font-medium text-gray-500">Tổng Builds</p>
+                                <p className="text-sm font-medium text-gray-500">Tổng Ứng dụng</p>
                                 <p className="text-2xl font-semibold text-gray-900">{stats.total}</p>
                             </div>
                         </div>
@@ -508,7 +508,7 @@ export default function AdminPage() {
                                 </div>
                             </div>
                             <div className="ml-4">
-                                <p className="text-sm font-medium text-gray-500">Tổng Downloads</p>
+                                <p className="text-sm font-medium text-gray-500">Tổng Lượt tải</p>
                                 <p className="text-2xl font-semibold text-gray-900">{stats.totalDownloads}</p>
                             </div>
                         </div>
@@ -517,16 +517,16 @@ export default function AdminPage() {
 
                 <div className="bg-white shadow rounded-lg">
                     <div className="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                        <h1 className="text-2xl font-bold text-gray-900">Admin - Quản lý Builds</h1>
+                        <h1 className="text-2xl font-bold text-gray-900">Admin - Quản lý Ứng dụng</h1>
                         <div className="flex gap-2">
                             <button
                                 onClick={handleExport}
-                                disabled={builds.length === 0 || loading}
+                                disabled={apps.length === 0 || loading}
                                 className="btn px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                             >
                                 📊 Export CSV
                             </button>
-                            <button onClick={fetchBuilds} disabled={loading} className="btn px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                            <button onClick={fetchApps} disabled={loading} className="btn px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
                                 {loading ? '🔄 Đang tải...' : '🔄 Làm mới'}
                             </button>
                         </div>
@@ -539,7 +539,7 @@ export default function AdminPage() {
                                 <div className="flex">
                                     <input
                                         type="text"
-                                        placeholder="Tìm kiếm theo tên app, bundle ID, build ID, phiên bản..."
+                                        placeholder="Tìm kiếm theo tên app, bundle ID, app ID, phiên bản..."
                                         value={search}
                                         onChange={(e) => setSearch(e.target.value)}
                                         className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
@@ -565,9 +565,9 @@ export default function AdminPage() {
                                 </div>
 
                                 {/* Bulk Actions */}
-                                {selectedBuilds.length > 0 && (
+                                {selectedApps.length > 0 && (
                                     <div className="flex gap-2 ml-4 pl-4 border-l border-gray-300 justify-center items-center">
-                                        <span className="px-3 py-2 text-sm text-gray-600">{selectedBuilds.length} đã chọn</span>
+                                        <span className="px-3 py-2 text-sm text-gray-600">{selectedApps.length} đã chọn</span>
                                         <button
                                             onClick={handleBulkDelete}
                                             disabled={actionLoading === 'bulk-delete'}
@@ -590,25 +590,25 @@ export default function AdminPage() {
                                     <p className="text-gray-600">Đang tải dữ liệu...</p>
                                 </div>
                             </div>
-                        ) : builds.length === 0 ? (
+                        ) : apps.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                                 <div className="text-6xl mb-4">📱</div>
-                                <h3 className="text-lg font-medium mb-2">Không có builds nào</h3>
-                                <p className="text-sm">{search || statusFilter !== 'all' ? 'Không tìm thấy builds phù hợp với bộ lọc' : 'Chưa có builds nào được tải lên'}</p>
+                                <h3 className="text-lg font-medium mb-2">Không có ứng dụng nào</h3>
+                                <p className="text-sm">{search || statusFilter !== 'all' ? 'Không tìm thấy ứng dụng phù hợp với bộ lọc' : 'Chưa có ứng dụng nào được tải lên'}</p>
                             </div>
                         ) : (
                             <div className="block md:hidden">
                                 {/* Mobile Card View */}
                                 <div className="space-y-4 p-4">
-                                    {sortedBuilds.map((build) => (
-                                        <div key={build.id} className={`bg-white border rounded-lg p-4 ${selectedBuilds.includes(build.buildId) ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
+                                    {sortedApps.map((app) => (
+                                        <div key={app.id} className={`bg-white border rounded-lg p-4 ${selectedApps.includes(app.id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
                                             <div className="flex items-start justify-between mb-3">
                                                 <div className="flex items-center gap-3">
-                                                    <input type="checkbox" checked={selectedBuilds.includes(build.buildId)} onChange={() => handleSelectBuild(build.buildId)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                                                    {build.iconUrl && (
+                                                    <input type="checkbox" checked={selectedApps.includes(app.id)} onChange={() => handleSelectApp(app.id)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                                                    {app.iconUrl && (
                                                         <img
                                                             className="h-12 w-12 rounded-lg border border-gray-200"
-                                                            src={build.iconUrl}
+                                                            src={app.iconUrl}
                                                             alt="App icon"
                                                             onError={(e) => {
                                                                 e.currentTarget.style.display = 'none';
@@ -616,60 +616,60 @@ export default function AdminPage() {
                                                         />
                                                     )}
                                                     <div className="flex flex-col items-start justify-center">
-                                                        <h3 className="font-medium text-gray-900">{build.displayName || build.appName}</h3>
-                                                        <p className="text-sm text-gray-600">{build.bundleId}</p>
+                                                        <h3 className="font-medium text-gray-900">{app.displayName || app.appName}</h3>
+                                                        <p className="text-sm text-gray-600">{app.bundleId}</p>
                                                         <p className="text-sm text-gray-500">
-                                                            Phiên bản {build.version} ({build.buildNumber})
+                                                            Phiên bản {app.version} ({app.buildNumber})
                                                         </p>
                                                     </div>
                                                 </div>
-                                                {getStatusBadge(build.status)}
+                                                {getStatusBadge(app.status)}
                                             </div>
 
                                             <div className="space-y-2">
                                                 <div className="flex justify-between text-sm">
-                                                    <span className="text-gray-500">Downloads:</span>
-                                                    <span className={build.downloadCount >= (build.maxDownloads || Infinity) ? 'text-red-600 font-medium' : ''}>
-                                                        {build.downloadCount}/{build.maxDownloads || '∞'}
+                                                    <span className="text-gray-500">Lượt tải:</span>
+                                                    <span className={app.downloadCount >= (app.maxDownloads || Infinity) ? 'text-red-600 font-medium' : ''}>
+                                                        {app.downloadCount}/{app.maxDownloads || '∞'}
                                                     </span>
                                                 </div>
 
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-500">Kích thước:</span>
-                                                    <span>{StorageUtils.formatFileSize(parseInt(build.fileSize))}</span>
+                                                    <span>{StorageUtils.formatFileSize(parseInt(app.fileSize))}</span>
                                                 </div>
 
                                                 <div className="flex justify-between text-sm">
                                                     <span className="text-gray-500">Tạo lúc:</span>
-                                                    <span>{formatRelativeTime(build.createdAt)}</span>
+                                                    <span>{formatRelativeTime(app.createdAt)}</span>
                                                 </div>
 
-                                                {build.expiresAt && (
+                                                {app.expiresAt && (
                                                     <div className="flex justify-between text-sm">
                                                         <span className="text-gray-500">Hết hạn:</span>
-                                                        <span className={isExpired(build.expiresAt) ? 'text-red-600 font-medium' : isExpiredSoon(build.expiresAt) ? 'text-yellow-600 font-medium' : ''}>
-                                                            {isExpired(build.expiresAt) ? 'Đã hết hạn' : isExpiredSoon(build.expiresAt) ? 'Sắp hết hạn' : formatRelativeTime(build.expiresAt)}
+                                                        <span className={isExpired(app.expiresAt) ? 'text-red-600 font-medium' : isExpiredSoon(app.expiresAt) ? 'text-yellow-600 font-medium' : ''}>
+                                                            {isExpired(app.expiresAt) ? 'Đã hết hạn' : isExpiredSoon(app.expiresAt) ? 'Sắp hết hạn' : formatRelativeTime(app.expiresAt)}
                                                         </span>
                                                     </div>
                                                 )}
                                             </div>
 
                                             <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-gray-200">
-                                                <button onClick={() => startEdit(build)} className="btn px-2 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                                                <button onClick={() => startEdit(app)} className="btn px-2 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
                                                     Sửa
                                                 </button>
-                                                <button onClick={() => handleDownload(build)} className="btn px-2 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors">
+                                                <button onClick={() => handleDownload(app)} className="btn px-2 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors">
                                                     Tải
                                                 </button>
-                                                <Link href={`/app/${build.buildId}`} target="_blank" rel="noopener noreferrer" className="btn px-2 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700">
+                                                <Link href={`/app/${app.appId}`} target="_blank" rel="noopener noreferrer" className="btn px-2 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700">
                                                     Xem
                                                 </Link>
                                                 <button
-                                                    onClick={() => handleDelete(build.buildId)}
-                                                    disabled={actionLoading === build.buildId}
+                                                    onClick={() => handleDelete(app.appId)}
+                                                    disabled={actionLoading === app.appId}
                                                     className="btn px-2 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 disabled:opacity-50"
                                                 >
-                                                    {actionLoading === build.buildId ? 'Đang xóa...' : 'Xóa'}
+                                                    {actionLoading === app.appId ? 'Đang xóa...' : 'Xóa'}
                                                 </button>
                                             </div>
                                         </div>
@@ -679,12 +679,12 @@ export default function AdminPage() {
                         )}
 
                         {/* Desktop Table View */}
-                        {!loading && builds.length > 0 && (
+                        {!loading && apps.length > 0 && (
                             <table className="min-w-full divide-y divide-gray-200 hidden md:table">
                                 <thead className="bg-gray-50">
                                     <tr>
                                         <th className="px-6 py-3 text-left">
-                                            <input type="checkbox" checked={selectedBuilds.length === builds.length && builds.length > 0} onChange={handleSelectAll} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                                            <input type="checkbox" checked={selectedApps.length === apps.length && apps.length > 0} onChange={handleSelectAll} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
                                         </th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('appName')}>
                                             <div className="flex items-center gap-1">Ứng dụng {getSortIcon('appName')}</div>
@@ -708,17 +708,17 @@ export default function AdminPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {sortedBuilds.map((build) => (
-                                        <tr key={build.id} className={`hover:bg-gray-50 transition-colors ${selectedBuilds.includes(build.buildId) ? 'bg-blue-50' : ''}`} onClick={() => handleSelectBuild(build.buildId)}>
+                                    {sortedApps.map((app) => (
+                                        <tr key={app.id} className={`hover:bg-gray-50 transition-colors ${selectedApps.includes(app.appId) ? 'bg-blue-50' : ''}`} onClick={() => handleSelectApp(app.appId)}>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <input type="checkbox" checked={selectedBuilds.includes(build.buildId)} onChange={() => handleSelectBuild(build.buildId)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                                                <input type="checkbox" checked={selectedApps.includes(app.appId)} onChange={() => handleSelectApp(app.appId)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex items-center">
-                                                    {build.iconUrl && (
+                                                    {app.iconUrl && (
                                                         <img
                                                             className="h-12 w-12 rounded-lg mr-4 border border-gray-200"
-                                                            src={build.iconUrl}
+                                                            src={app.iconUrl}
                                                             alt="App icon"
                                                             onError={(e) => {
                                                                 e.currentTarget.style.display = 'none';
@@ -726,28 +726,28 @@ export default function AdminPage() {
                                                         />
                                                     )}
                                                     <div>
-                                                        <div className="text-sm font-medium text-gray-900 max-w-xs truncate" title={build.appName}>
-                                                            {build.appName}
+                                                        <div className="text-sm font-medium text-gray-900 max-w-xs truncate" title={app.appName}>
+                                                            {app.appName}
                                                         </div>
-                                                        <div className="text-sm text-gray-500 max-w-xs truncate" title={build.bundleId}>
-                                                            {build.bundleId}
+                                                        <div className="text-sm text-gray-500 max-w-xs truncate" title={app.bundleId}>
+                                                            {app.bundleId}
                                                         </div>
-                                                        <div className="text-xs text-gray-400 font-mono">{build.buildId.substring(0, 8)}...</div>
+                                                        <div className="text-xs text-gray-400 font-mono">{app.appId}</div>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="text-sm text-gray-900">{build.version}</div>
-                                                <div className="text-sm text-gray-500">Build {build.buildNumber}</div>
-                                                <div className="text-xs text-gray-400">{StorageUtils.formatFileSize(parseInt(build.fileSize))}</div>
+                                                <div className="text-sm text-gray-900">{app.version}</div>
+                                                <div className="text-sm text-gray-500">Build {app.buildNumber}</div>
+                                                <div className="text-xs text-gray-400">{StorageUtils.formatFileSize(parseInt(app.fileSize))}</div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                {editingBuild === build.buildId ? (
+                                                {editingApp === app.appId ? (
                                                     <select
                                                         value={editData.status}
                                                         onChange={(e) => setEditData({ ...editData, status: e.target.value })}
                                                         className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 text-black"
-                                                        disabled={actionLoading === build.buildId}
+                                                        disabled={actionLoading === app.appId}
                                                     >
                                                         <option value="processing">{getStatusText('processing')}</option>
                                                         <option value="active">{getStatusText('active')}</option>
@@ -755,40 +755,40 @@ export default function AdminPage() {
                                                         <option value="expired">{getStatusText('expired')}</option>
                                                     </select>
                                                 ) : (
-                                                    getStatusBadge(build.status)
+                                                    getStatusBadge(app.status)
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                {editingBuild === build.buildId ? (
+                                                {editingApp === app.appId ? (
                                                     <input
                                                         type="number"
                                                         value={editData.maxDownloads}
                                                         onChange={(e) => setEditData({ ...editData, maxDownloads: e.target.value })}
                                                         placeholder="Không giới hạn"
                                                         className="text-sm border border-gray-300 rounded px-2 py-1 w-24 focus:ring-2 focus:ring-blue-500 text-black"
-                                                        disabled={actionLoading === build.buildId}
+                                                        disabled={actionLoading === app.appId}
                                                     />
                                                 ) : (
                                                     <div className="text-sm text-gray-900">
-                                                        <span className={build.downloadCount >= (build.maxDownloads || Infinity) ? 'text-red-600 font-medium' : ''}>{build.downloadCount}</span>/{build.maxDownloads || '∞'}
+                                                        <span className={app.downloadCount >= (app.maxDownloads || Infinity) ? 'text-red-600 font-medium' : ''}>{app.downloadCount}</span>/{app.maxDownloads || '∞'}
                                                     </div>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                {editingBuild === build.buildId ? (
+                                                {editingApp === app.appId ? (
                                                     <input
                                                         type="datetime-local"
                                                         value={editData.expiresAt}
                                                         onChange={(e) => setEditData({ ...editData, expiresAt: e.target.value })}
                                                         className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 text-black"
-                                                        disabled={actionLoading === build.buildId}
+                                                        disabled={actionLoading === app.appId}
                                                     />
                                                 ) : (
-                                                    <div className={`text-sm ${isExpired(build.expiresAt) ? 'text-red-600 font-medium' : isExpiredSoon(build.expiresAt) ? 'text-yellow-600 font-medium' : 'text-gray-500'}`}>
-                                                        {build.expiresAt ? (
+                                                    <div className={`text-sm ${isExpired(app.expiresAt) ? 'text-red-600 font-medium' : isExpiredSoon(app.expiresAt) ? 'text-yellow-600 font-medium' : 'text-gray-500'}`}>
+                                                        {app.expiresAt ? (
                                                             <div>
-                                                                <div>{formatDate(build.expiresAt)}</div>
-                                                                <div className="text-xs">{isExpired(build.expiresAt) ? 'Đã hết hạn' : isExpiredSoon(build.expiresAt) ? 'Sắp hết hạn' : 'Còn hiệu lực'}</div>
+                                                                <div>{formatDate(app.expiresAt)}</div>
+                                                                <div className="text-xs">{isExpired(app.expiresAt) ? 'Đã hết hạn' : isExpiredSoon(app.expiresAt) ? 'Sắp hết hạn' : 'Còn hiệu lực'}</div>
                                                             </div>
                                                         ) : (
                                                             'Không giới hạn'
@@ -797,16 +797,16 @@ export default function AdminPage() {
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                <div>{formatDate(build.createdAt)}</div>
-                                                <div className="text-xs text-gray-400">{formatRelativeTime(build.createdAt)}</div>
+                                                <div>{formatDate(app.createdAt)}</div>
+                                                <div className="text-xs text-gray-400">{formatRelativeTime(app.createdAt)}</div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                {editingBuild === build.buildId ? (
+                                                {editingApp === app.appId ? (
                                                     <div className="flex gap-2">
-                                                        <button onClick={saveEdit} disabled={actionLoading === build.buildId} className="btn text-green-600 hover:text-green-900 disabled:opacity-50 transition-colors">
-                                                            {actionLoading === build.buildId ? 'Đang lưu...' : 'Lưu'}
+                                                        <button onClick={saveEdit} disabled={actionLoading === app.appId} className="btn text-green-600 hover:text-green-900 disabled:opacity-50 transition-colors">
+                                                            {actionLoading === app.appId ? 'Đang lưu...' : 'Lưu'}
                                                         </button>
-                                                        <button onClick={cancelEdit} disabled={actionLoading === build.buildId} className="btn text-gray-600 hover:text-gray-900 disabled:opacity-50 transition-colors">
+                                                        <button onClick={cancelEdit} disabled={actionLoading === app.appId} className="btn text-gray-600 hover:text-gray-900 disabled:opacity-50 transition-colors">
                                                             Hủy
                                                         </button>
                                                     </div>
@@ -816,7 +816,7 @@ export default function AdminPage() {
                                                             type="button"
                                                             onClick={(e) => {
                                                                 e.preventDefault();
-                                                                startEdit(build);
+                                                                startEdit(app);
                                                             }}
                                                             className="btn text-blue-600 hover:text-blue-900 transition-colors"
                                                         >
@@ -826,25 +826,25 @@ export default function AdminPage() {
                                                             type="button"
                                                             onClick={(e) => {
                                                                 e.preventDefault();
-                                                                handleDownload(build);
+                                                                handleDownload(app);
                                                             }}
                                                             className="btn text-green-600 hover:text-green-900 transition-colors"
                                                         >
                                                             Tải
                                                         </button>
-                                                        <Link href={`/app/${build.buildId}`} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-900 transition-colors">
+                                                        <Link href={`/app/${app.appId}`} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-900 transition-colors">
                                                             Xem
                                                         </Link>
                                                         <button
                                                             type="button"
                                                             onClick={(e) => {
                                                                 e.preventDefault();
-                                                                handleDelete(build.buildId);
+                                                                handleDelete(app.appId);
                                                             }}
-                                                            disabled={actionLoading === build.buildId}
+                                                            disabled={actionLoading === app.appId}
                                                             className="btn text-red-600 hover:text-red-900 disabled:opacity-50 transition-colors"
                                                         >
-                                                            {actionLoading === build.buildId ? 'Đang xóa...' : 'Xóa'}
+                                                            {actionLoading === app.appId ? 'Đang xóa...' : 'Xóa'}
                                                         </button>
                                                     </div>
                                                 )}
@@ -857,7 +857,7 @@ export default function AdminPage() {
                     </div>
 
                     {/* Enhanced Pagination */}
-                    {!loading && builds.length > 0 && pagination.totalPages > 1 && (
+                    {!loading && apps.length > 0 && pagination.totalPages > 1 && (
                         <div className="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
                             <div className="text-sm text-gray-700">
                                 Hiển thị <span className="font-medium">{(pagination.page - 1) * pagination.limit + 1}</span> đến <span className="font-medium">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> trong tổng số{' '}

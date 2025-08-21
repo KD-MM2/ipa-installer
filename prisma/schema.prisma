@@ -11,9 +11,9 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Build {
+model App {
   id        String   @id @default(cuid())
-  buildId   String   @unique // 6-character random ID for public access
+  appId     String   @unique // 6-character random ID for public access
   
   // App metadata (extracted from Info.plist)
   appName           String
@@ -36,13 +36,13 @@ model Build {
   downloadCount    Int         @default(0)
   
   // Expiry settings
-  expiresAt        DateTime?   // When the build expires
+  expiresAt        DateTime?   // When the app expires
   
   // Timestamps
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
   
-  @@map("builds")
+  @@map("apps")
 }
 
 
