@@ -1,12 +1,12 @@
-import { Worker, Job } from 'bullmq';
-import fs from 'fs';
 import { PrismaClient } from '@/../prisma/prisma';
-import { redisConnection } from '@/lib/redis';
-import { IpaProcessJobData, QUEUE_NAMES, JobProgress } from '@/types/queue';
-import { extractIpaMetadata, optimizeIcon, generatePlistContent, validateIpaFile } from '@/lib/ipa-utils';
 import { S3ServiceWorker } from '@/lib/S3ServiceWorker';
-import { UrlUtils } from '@/lib/url-utils';
 import { convertCgbiToStandardPng } from '@/lib/cgbi2png';
+import { extractIpaMetadata, generatePlistContent, optimizeIcon, validateIpaFile } from '@/lib/ipa-utils';
+import { redisConnection } from '@/lib/redis';
+import { UrlUtils } from '@/lib/url-utils';
+import { IpaProcessJobData, JobProgress, QUEUE_NAMES } from '@/types/queue';
+import { Job, Worker } from 'bullmq';
+import fs from 'fs';
 
 const prisma = new PrismaClient();
 const s3Service = new S3ServiceWorker();

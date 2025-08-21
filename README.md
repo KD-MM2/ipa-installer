@@ -222,7 +222,7 @@ pnpm start
 ### Cài đặt app trên iPhone
 
 1. Mở link download trên Safari iOS
-2. Tap "Install" 
+2. Tap "Install"
 3. App sẽ được cài đặt trực tiếp
 
 ## 🔌 API Documentation
@@ -322,23 +322,23 @@ Content-Type: application/json
 ### Common Issues
 
 1. **Redis connection failed**
-   - Kiểm tra Redis đang chạy: `docker ps`
-   - Verify REDIS_URL trong .env
+    - Kiểm tra Redis đang chạy: `docker ps`
+    - Verify REDIS_URL trong .env
 
 2. **MinIO upload failed**
-   - Kiểm tra MinIO đang chạy
-   - Verify credentials và bucket permissions
-   - Check MinIO Console: http://localhost:9001
+    - Kiểm tra MinIO đang chạy
+    - Verify credentials và bucket permissions
+    - Check MinIO Console: http://localhost:9001
 
 3. **Worker not processing jobs**
-   - Restart workers: `pnpm run workers`
-   - Check Redis connection
-   - Review worker logs
+    - Restart workers: `pnpm run workers`
+    - Check Redis connection
+    - Review worker logs
 
 4. **IPA processing failed**
-   - Kiểm tra file .ipa hợp lệ
-   - Verify file size < 500MB
-   - Check Info.plist format
+    - Kiểm tra file .ipa hợp lệ
+    - Verify file size < 500MB
+    - Check Info.plist format
 
 ### Debug Commands
 
@@ -360,7 +360,7 @@ pnpm run workers:dev
 Workers sẽ log chi tiết:
 
 - ✅ Successful operations
-- ❌ Errors và failures  
+- ❌ Errors và failures
 - 📈 Progress updates
 - 🧹 Cleanup operations
 

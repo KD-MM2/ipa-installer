@@ -1,16 +1,13 @@
 #!/usr/bin/env node
-
 /**
  * Worker process để chạy tất cả các workers cho queue system
  * Chạy file này để start workers: `node workers/index.js`
  */
-
-import 'dotenv/config';
-
-import '@/workers/ipa-process-worker';
+import { checkRedisConnection, closeRedisConnection } from '@/lib/redis';
 import '@/workers/cleanup-worker';
 import { scheduleExpiredAppsCleanup } from '@/workers/cleanup-worker';
-import { checkRedisConnection, closeRedisConnection } from '@/lib/redis';
+import '@/workers/ipa-process-worker';
+import 'dotenv/config';
 
 console.log('🚀 Starting IPA Installer Workers...');
 

@@ -1,9 +1,9 @@
-import { Worker, Job } from 'bullmq';
 import { PrismaClient } from '@/../prisma/prisma';
-import { redisConnection } from '@/lib/redis';
-import { QUEUE_NAMES } from '@/types/queue';
 import { S3ServiceWorker } from '@/lib/S3ServiceWorker';
+import { redisConnection } from '@/lib/redis';
 import { UrlUtils } from '@/lib/url-utils';
+import { QUEUE_NAMES } from '@/types/queue';
+import { Job, Worker } from 'bullmq';
 
 const prisma = new PrismaClient();
 const s3Service = new S3ServiceWorker();

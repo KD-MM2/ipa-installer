@@ -23,7 +23,6 @@
     libpng / PNG spec: https://www.libpng.org/pub/png/spec/1.2/PNG-Chunks.html
     W3C PNG chunks: https://www.w3.org/TR/PNG-Chunks.html
 */
-
 // import * as fs from 'fs';
 import * as zlib from 'zlib';
 

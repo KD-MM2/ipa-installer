@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { api } from '@/lib/axios-client';
+import { useRouter } from 'next/navigation';
+
+import { useEffect, useState } from 'react';
 
 interface UploadSuccessStateProps {
     uploadResult: {

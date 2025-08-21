@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import QRCode from 'qrcode';
 import { api } from '@/lib/axios-client';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
+import QRCode from 'qrcode';
+
+import { useEffect, useState } from 'react';
 
 interface AppInfo {
     appId: string;

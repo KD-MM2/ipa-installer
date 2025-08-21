@@ -1,4 +1,4 @@
-import { BUCKET_NAME, s3Client, isS3Available } from '@/lib/s3';
+import { BUCKET_NAME, isS3Available, s3Client } from '@/lib/s3';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {

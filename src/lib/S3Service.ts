@@ -1,6 +1,6 @@
 // lib/S3Service.ts
 import { api } from '@/lib/axios-client';
-import { UploadResponse, CommonS3Response } from '@/lib/s3';
+import { CommonS3Response, UploadResponse } from '@/lib/s3';
 
 export const S3Service = {
     // Connection test
