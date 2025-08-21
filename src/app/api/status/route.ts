@@ -1,3 +1,4 @@
+// src/app/api/status/route.ts
 import { PrismaClient } from '@/../prisma/prisma';
 import { getJobStatus } from '@/lib/queue';
 import { UrlUtils } from '@/lib/url-utils';

@@ -1,6 +1,9 @@
 import LayoutProviders from '@/providers/layout';
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import 'primeicons/primeicons.css';
+
+import 'primereact/resources/primereact.css';
 
 import './globals.css';
 

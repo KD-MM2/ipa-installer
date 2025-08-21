@@ -4,7 +4,23 @@ import { api } from '@/lib/axios-client';
 import { StorageUtils } from '@/lib/storage-utils';
 import Link from 'next/link';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button } from 'primereact/button';
+import { Calendar } from 'primereact/calendar';
+import { Card } from 'primereact/card';
+import { Column } from 'primereact/column';
+import { ConfirmDialog, confirmDialog } from 'primereact/confirmdialog';
+// PrimeReact Components
+import { DataTable } from 'primereact/datatable';
+import { Dialog } from 'primereact/dialog';
+import { Dropdown } from 'primereact/dropdown';
+import { InputNumber } from 'primereact/inputnumber';
+import { InputText } from 'primereact/inputtext';
+import { Paginator } from 'primereact/paginator';
+import { Panel } from 'primereact/panel';
+import { ProgressSpinner } from 'primereact/progressspinner';
+import { Tag } from 'primereact/tag';
+import { Toolbar } from 'primereact/toolbar';
+import { useCallback, useEffect, useState } from 'react';
 
 interface App {
     id: string;
@@ -40,20 +56,6 @@ interface Pagination {
     hasPrev: boolean;
 }
 
-interface SortConfig {
-    key: keyof App | '';
-    direction: 'asc' | 'desc';
-}
-
-interface ConfirmModal {
-    isOpen: boolean;
-    title: string;
-    message: string;
-    confirmText: string;
-    confirmAction: () => void;
-    type: 'danger' | 'warning' | 'info';
-}
-
 const statusText = {
     all: 'Tất cả',
     active: 'Đang hoạt động',
@@ -63,6 +65,15 @@ const statusText = {
     failed: 'Đã thất bại',
     unknown: 'Không xác định'
 };
+
+const statusOptions = [
+    { label: 'Tất cả', value: 'all' },
+    { label: 'Đang hoạt động', value: 'active' },
+    { label: 'Đang xử lý', value: 'processing' },
+    { label: 'Đã hết hạn', value: 'expired' },
+    { label: 'Đã tắt', value: 'disabled' },
+    { label: 'Đã thất bại', value: 'failed' }
+];
 
 export default function AdminPage() {
     const [apps, setApps] = useState<App[]>([]);
@@ -78,22 +89,14 @@ export default function AdminPage() {
     });
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
-    const [sortConfig, setSortConfig] = useState<SortConfig>({ key: '', direction: 'desc' });
     const [editingApp, setEditingApp] = useState<string | null>(null);
     const [editData, setEditData] = useState({
         status: '',
-        maxDownloads: '',
-        expiresAt: ''
+        maxDownloads: null as number | null,
+        expiresAt: null as Date | null
     });
-    const [selectedApps, setSelectedApps] = useState<string[]>([]);
-    const [confirmModal, setConfirmModal] = useState<ConfirmModal>({
-        isOpen: false,
-        title: '',
-        message: '',
-        confirmText: '',
-        confirmAction: () => {},
-        type: 'danger'
-    });
+    const [selectedApps, setSelectedApps] = useState<App[]>([]);
+    const [editDialogVisible, setEditDialogVisible] = useState(false);
     const [stats, setStats] = useState({
         total: 0,
         active: 0,
@@ -101,31 +104,10 @@ export default function AdminPage() {
         expired: 0,
         totalDownloads: 0
     });
+
     const getStatusText = (status: string) => {
         return statusText[status as keyof typeof statusText] || status;
     };
-
-    // Memoized sorted and filtered apps
-    const sortedApps = useMemo(() => {
-        if (!sortConfig.key) return apps;
-
-        return [...apps].sort((a, b) => {
-            const aValue = a[sortConfig.key as keyof App];
-            const bValue = b[sortConfig.key as keyof App];
-
-            if (aValue === null || aValue === undefined) return 1;
-            if (bValue === null || bValue === undefined) return -1;
-
-            if (typeof aValue === 'string' && typeof bValue === 'string') {
-                const result = aValue.localeCompare(bValue);
-                return sortConfig.direction === 'asc' ? result : -result;
-            }
-
-            if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
-            if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
-            return 0;
-        });
-    }, [apps, sortConfig]);
 
     const fetchApps = useCallback(async () => {
         setLoading(true);
@@ -144,7 +126,6 @@ export default function AdminPage() {
                 setApps(data.data);
                 setPagination(data.pagination);
 
-                // Calculate stats
                 const newStats = {
                     total: data.pagination.total,
                     active: data.data.filter((b: App) => b.status === 'active').length,
@@ -170,67 +151,35 @@ export default function AdminPage() {
         fetchApps();
     };
 
-    const handleStatusFilter = (status: string) => {
-        setStatusFilter(status);
-        setPagination({ ...pagination, page: 1 });
-    };
+    const handleDelete = (appId: string) => {
+        confirmDialog({
+            message: 'Bạn có chắc muốn xóa vĩnh viễn ứng dụng này khỏi hệ thống? Hành động này không thể hoàn tác.',
+            header: 'Xóa Ứng dụng',
+            icon: 'pi pi-exclamation-triangle',
+            acceptClassName: 'p-button-danger',
+            acceptLabel: 'Xóa',
+            rejectLabel: 'Hủy',
+            accept: async () => {
+                setActionLoading(appId);
+                try {
+                    const response = await api.delete('/api/admin/apps', {
+                        data: { appId }
+                    });
 
-    const handleSort = (key: keyof App) => {
-        setSortConfig((prev) => ({
-            key,
-            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-        }));
-    };
-
-    const handleSelectAll = () => {
-        if (selectedApps.length === apps.length) {
-            setSelectedApps([]);
-        } else {
-            setSelectedApps(apps.map((app) => app.appId));
-        }
-    };
-
-    const handleSelectApp = (appId: string) => {
-        setSelectedApps((prev) => (prev.includes(appId) ? prev.filter((id) => id !== appId) : [...prev, appId]));
-    };
-
-    const openConfirmModal = (title: string, message: string, confirmText: string, action: () => void, type: 'danger' | 'warning' | 'info' = 'danger') => {
-        setConfirmModal({
-            isOpen: true,
-            title,
-            message,
-            confirmText,
-            confirmAction: action,
-            type
-        });
-    };
-
-    const closeConfirmModal = () => {
-        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
-    };
-
-    const handleDelete = async (appId: string) => {
-        openConfirmModal('Xóa Ứng dụng', `Bạn có chắc muốn xóa vĩnh viễn ứng dụng này khỏi hệ thống? Hành động này không thể hoàn tác.`, 'Xóa', async () => {
-            setActionLoading(appId);
-            try {
-                const response = await api.delete('/api/admin/apps', {
-                    data: { appId }
-                });
-
-                const data = response.data;
-                if (data.success) {
-                    alert('Ứng dụng đã được xóa thành công');
-                    fetchApps();
-                    setSelectedApps((prev) => prev.filter((id) => id !== appId));
-                } else {
-                    alert(`Lỗi: ${data.error}`);
+                    const data = response.data;
+                    if (data.success) {
+                        //alert('Ứng dụng đã được xóa thành công');
+                        fetchApps();
+                        setSelectedApps((prev) => prev.filter((app) => app.appId !== appId));
+                    } else {
+                        //alert(`Lỗi: ${data.error}`);
+                    }
+                } catch (error) {
+                    console.error('Error deleting app:', error);
+                    //alert('Có lỗi xảy ra khi xóa ứng dụng');
+                } finally {
+                    setActionLoading(null);
                 }
-            } catch (error) {
-                console.error('Error deleting app:', error);
-                alert('Có lỗi xảy ra khi xóa ứng dụng');
-            } finally {
-                setActionLoading(null);
-                closeConfirmModal();
             }
         });
     };
@@ -238,28 +187,34 @@ export default function AdminPage() {
     const handleBulkDelete = () => {
         if (selectedApps.length === 0) return;
 
-        openConfirmModal('Xóa nhiều Ứng dụng', `Bạn có chắc muốn xóa vĩnh viễn ${selectedApps.length} ứng dụng đã chọn? Hành động này không thể hoàn tác.`, 'Xóa tất cả', async () => {
-            setActionLoading('bulk-delete');
-            try {
-                // Use bulk delete API
-                const response = await api.delete('/api/admin/apps', {
-                    data: { appIds: selectedApps }
-                });
+        confirmDialog({
+            message: `Bạn có chắc muốn xóa vĩnh viễn ${selectedApps.length} ứng dụng đã chọn? Hành động này không thể hoàn tác.`,
+            header: 'Xóa nhiều Ứng dụng',
+            icon: 'pi pi-exclamation-triangle',
+            acceptClassName: 'p-button-danger',
+            acceptLabel: 'Xóa tất cả',
+            rejectLabel: 'Hủy',
+            accept: async () => {
+                setActionLoading('bulk-delete');
+                try {
+                    const response = await api.delete('/api/admin/apps', {
+                        data: { appIds: selectedApps.map((app) => app.appId) }
+                    });
 
-                const data = response.data;
-                if (data.success) {
-                    alert(`Đã xóa vĩnh viễn ${data.deletedCount || selectedApps.length} ứng dụng thành công`);
-                    fetchApps();
-                    setSelectedApps([]);
-                } else {
-                    alert(`Lỗi: ${data.error}`);
+                    const data = response.data;
+                    if (data.success) {
+                        //alert(`Đã xóa vĩnh viễn ${data.deletedCount || selectedApps.length} ứng dụng thành công`);
+                        fetchApps();
+                        setSelectedApps([]);
+                    } else {
+                        //alert(`Lỗi: ${data.error}`);
+                    }
+                } catch (error) {
+                    console.error('Error bulk deleting apps:', error);
+                    //alert('Có lỗi xảy ra khi xóa ứng dụng');
+                } finally {
+                    setActionLoading(null);
                 }
-            } catch (error) {
-                console.error('Error bulk deleting apps:', error);
-                alert('Có lỗi xảy ra khi xóa ứng dụng');
-            } finally {
-                setActionLoading(null);
-                closeConfirmModal();
             }
         });
     };
@@ -301,31 +256,28 @@ export default function AdminPage() {
 
     const handleDownload = async (app: App) => {
         if (!app || app.status !== 'active') {
-            alert('Ứng dụng không khả dụng để cài đặt');
+            //alert('Ứng dụng không khả dụng để cài đặt');
             return;
         }
 
         try {
-            // Increment download count first
             const response = await api.post('/api/download', {
                 appId: app.appId
             });
 
             if (response.status !== 200) {
-                const errorData = response.data;
-                alert(errorData.error || 'Không thể tải xuống lúc này');
+                // const errorData = response.data;
+                //alert(errorData.error || 'Không thể tải xuống lúc này');
                 return;
             }
 
-            // Use itms-services link for direct installation (like in app detail page)
             const installUrl = `itms-services://?action=download-manifest&url=${encodeURIComponent(app.plistUrl)}`;
             window.location.href = installUrl;
 
-            // Refresh the app list to show updated download count
             fetchApps();
         } catch (error) {
             console.error('Error downloading app:', error);
-            alert('Có lỗi xảy ra khi tải ứng dụng');
+            //alert('Có lỗi xảy ra khi tải ứng dụng');
         }
     };
 
@@ -333,14 +285,10 @@ export default function AdminPage() {
         setEditingApp(app.appId);
         setEditData({
             status: app.status,
-            maxDownloads: app.maxDownloads?.toString() || '',
-            expiresAt: app.expiresAt ? new Date(app.expiresAt).toISOString().slice(0, 16) : ''
+            maxDownloads: app.maxDownloads || null,
+            expiresAt: app.expiresAt ? new Date(app.expiresAt) : null
         });
-    };
-
-    const cancelEdit = () => {
-        setEditingApp(null);
-        setEditData({ status: '', maxDownloads: '', expiresAt: '' });
+        setEditDialogVisible(true);
     };
 
     const saveEdit = async () => {
@@ -357,11 +305,11 @@ export default function AdminPage() {
             };
 
             if (editData.maxDownloads) {
-                updates.maxDownloads = parseInt(editData.maxDownloads);
+                updates.maxDownloads = editData.maxDownloads;
             }
 
             if (editData.expiresAt) {
-                updates.expiresAt = editData.expiresAt;
+                updates.expiresAt = editData.expiresAt.toISOString();
             }
 
             const response = await api.patch('/api/admin/apps', {
@@ -371,37 +319,36 @@ export default function AdminPage() {
 
             const data = response.data;
             if (data.success) {
-                alert('Cập nhật thành công');
-                cancelEdit();
+                //alert('Cập nhật thành công');
+                setEditDialogVisible(false);
+                setEditingApp(null);
                 fetchApps();
             } else {
-                alert(`Lỗi: ${data.error}`);
+                //alert(`Lỗi: ${data.error}`);
             }
         } catch (error) {
             console.error('Error updating app:', error);
-            alert('Có lỗi xảy ra khi cập nhật');
+            //alert('Có lỗi xảy ra khi cập nhật');
         } finally {
             setActionLoading(null);
         }
     };
 
-    const getSortIcon = (key: keyof App) => {
-        if (sortConfig.key !== key) {
-            return <span className="text-gray-400">⇅</span>;
+    const getStatusSeverity = (status: string) => {
+        switch (status) {
+            case 'active':
+                return 'success';
+            case 'processing':
+                return 'warning';
+            case 'expired':
+                return 'danger';
+            case 'disabled':
+                return 'secondary';
+            case 'failed':
+                return 'danger';
+            default:
+                return 'info';
         }
-        return sortConfig.direction === 'asc' ? <span className="text-blue-600">↑</span> : <span className="text-blue-600">↓</span>;
-    };
-
-    const getStatusBadge = (status: string) => {
-        const statusColors = {
-            processing: 'bg-yellow-100 text-yellow-800',
-            active: 'bg-green-100 text-green-800',
-            expired: 'bg-red-100 text-red-800',
-            disabled: 'bg-gray-100 text-gray-800',
-            failed: 'bg-red-100 text-red-800'
-        };
-
-        return <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'}`}>{getStatusText(status)}</span>;
     };
 
     const formatDate = (dateString: string) => {
@@ -432,7 +379,7 @@ export default function AdminPage() {
         const now = new Date();
         const expiry = new Date(expiresAt);
         const diffDays = (expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-        return diffDays <= 7 && diffDays > 0; // Expires within 7 days
+        return diffDays <= 7 && diffDays > 0;
     };
 
     const isExpired = (expiresAt: string | undefined) => {
@@ -440,554 +387,260 @@ export default function AdminPage() {
         return new Date(expiresAt) < new Date();
     };
 
+    // Template functions for DataTable columns
+    const appTemplate = (rowData: App) => (
+        <div className="flex align-items-center">
+            {rowData.iconUrl && (
+                <img
+                    className="w-3rem h-3rem border-round mr-3"
+                    src={rowData.iconUrl}
+                    width={64}
+                    alt="App icon"
+                    onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                    }}
+                />
+            )}
+            <div>
+                <div className="font-medium">{rowData.appName}</div>
+                <div className="text-sm text-600">{rowData.bundleId}</div>
+                <div className="text-xs text-400 font-mono">{rowData.appId}</div>
+            </div>
+        </div>
+    );
+
+    const versionTemplate = (rowData: App) => (
+        <div>
+            <div>{rowData.version}</div>
+            <div className="text-sm text-600">Build {rowData.buildNumber}</div>
+            <div className="text-xs text-400">{StorageUtils.formatFileSize(parseInt(rowData.fileSize))}</div>
+        </div>
+    );
+
+    const statusTemplate = (rowData: App) => <Tag value={getStatusText(rowData.status)} severity={getStatusSeverity(rowData.status)} />;
+
+    const downloadsTemplate = (rowData: App) => (
+        <div>
+            <span className={rowData.downloadCount >= (rowData.maxDownloads || Infinity) ? 'text-red-500 font-medium' : ''}>{rowData.downloadCount}</span>/{rowData.maxDownloads || '∞'}
+        </div>
+    );
+
+    const expiresTemplate = (rowData: App) => {
+        if (!rowData.expiresAt) return 'Không giới hạn';
+
+        const expired = isExpired(rowData.expiresAt);
+        const expiringSoon = isExpiredSoon(rowData.expiresAt);
+
+        return (
+            <div className={expired ? 'text-red-500' : expiringSoon ? 'text-yellow-500' : ''}>
+                <div>{formatDate(rowData.expiresAt)}</div>
+                <div className="text-xs">{expired ? 'Đã hết hạn' : expiringSoon ? 'Sắp hết hạn' : 'Còn hiệu lực'}</div>
+            </div>
+        );
+    };
+
+    const createdTemplate = (rowData: App) => (
+        <div>
+            <div>{formatDate(rowData.createdAt)}</div>
+            <div className="text-xs text-400">{formatRelativeTime(rowData.createdAt)}</div>
+        </div>
+    );
+
+    const actionsTemplate = (rowData: App) => (
+        <div className="flex gap-2">
+            <Button icon="pi pi-pencil" size="small" onClick={() => startEdit(rowData)} tooltip="Sửa" />
+            <Button icon="pi pi-download" size="small" severity="success" onClick={() => handleDownload(rowData)} tooltip="Tải" />
+            <Link href={`/app/${rowData.appId}`} target="_blank" rel="noopener noreferrer">
+                <Button icon="pi pi-eye" size="small" severity="info" tooltip="Xem" />
+            </Link>
+            <Button icon="pi pi-trash" size="small" severity="danger" onClick={() => handleDelete(rowData.appId)} loading={actionLoading === rowData.appId} tooltip="Xóa" />
+        </div>
+    );
+
+    const toolbarStartContent = (
+        <div className="flex align-items-center gap-2">
+            <h1 className="text-2xl font-bold m-0">Admin - Quản lý Ứng dụng</h1>
+        </div>
+    );
+
+    const toolbarEndContent = (
+        <div className="flex gap-2">
+            <Button label="Export CSV" icon="pi pi-download" severity="success" onClick={handleExport} disabled={apps.length === 0 || loading} />
+            <Button label="Làm mới" icon="pi pi-refresh" onClick={fetchApps} loading={loading} />
+        </div>
+    );
+
     return (
         <div className="min-h-screen bg-gray-50 py-8">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="max-w-screen-xl mx-auto">
+                <ConfirmDialog />
+
                 {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="flex items-center">
-                            <div className="flex-shrink-0">
-                                <div className="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
-                                    <span className="text-white text-sm font-bold">📱</span>
-                                </div>
-                            </div>
-                            <div className="ml-4">
-                                <p className="text-sm font-medium text-gray-500">Tổng Ứng dụng</p>
-                                <p className="text-2xl font-semibold text-gray-900">{stats.total}</p>
-                            </div>
-                        </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                    <div className="w-full">
+                        <Card className="text-center h-full">
+                            <div className="text-2xl font-bold text-blue-500 mb-2">📱</div>
+                            <div className="text-600 mb-1">Tổng Ứng dụng</div>
+                            <div className="text-2xl font-semibold">{stats.total}</div>
+                        </Card>
                     </div>
-
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="flex items-center">
-                            <div className="flex-shrink-0">
-                                <div className="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
-                                    <span className="text-white text-sm font-bold">✓</span>
-                                </div>
-                            </div>
-                            <div className="ml-4">
-                                <p className="text-sm font-medium text-gray-500">Đang Hoạt Động</p>
-                                <p className="text-2xl font-semibold text-gray-900">{stats.active}</p>
-                            </div>
-                        </div>
+                    <div className="w-full">
+                        <Card className="text-center h-full">
+                            <div className="text-2xl font-bold text-green-500 mb-2">✓</div>
+                            <div className="text-600 mb-1">Đang Hoạt Động</div>
+                            <div className="text-2xl font-semibold">{stats.active}</div>
+                        </Card>
                     </div>
-
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="flex items-center">
-                            <div className="flex-shrink-0">
-                                <div className="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
-                                    <span className="text-white text-sm font-bold">⏳</span>
-                                </div>
-                            </div>
-                            <div className="ml-4">
-                                <p className="text-sm font-medium text-gray-500">Đang Xử Lý</p>
-                                <p className="text-2xl font-semibold text-gray-900">{stats.processing}</p>
-                            </div>
-                        </div>
+                    <div className="w-full">
+                        <Card className="text-center h-full">
+                            <div className="text-2xl font-bold text-yellow-500 mb-2">⏳</div>
+                            <div className="text-600 mb-1">Đang Xử Lý</div>
+                            <div className="text-2xl font-semibold">{stats.processing}</div>
+                        </Card>
                     </div>
-
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="flex items-center">
-                            <div className="flex-shrink-0">
-                                <div className="w-8 h-8 bg-red-500 rounded-md flex items-center justify-center">
-                                    <span className="text-white text-sm font-bold">⚠️</span>
-                                </div>
-                            </div>
-                            <div className="ml-4">
-                                <p className="text-sm font-medium text-gray-500">Đã Hết Hạn</p>
-                                <p className="text-2xl font-semibold text-gray-900">{stats.expired}</p>
-                            </div>
-                        </div>
+                    <div className="w-full">
+                        <Card className="text-center h-full">
+                            <div className="text-2xl font-bold text-red-500 mb-2">⚠️</div>
+                            <div className="text-600 mb-1">Đã Hết Hạn</div>
+                            <div className="text-2xl font-semibold">{stats.expired}</div>
+                        </Card>
                     </div>
-
-                    <div className="bg-white rounded-lg shadow p-6">
-                        <div className="flex items-center">
-                            <div className="flex-shrink-0">
-                                <div className="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center">
-                                    <span className="text-white text-sm font-bold">⬇️</span>
-                                </div>
-                            </div>
-                            <div className="ml-4">
-                                <p className="text-sm font-medium text-gray-500">Tổng Lượt tải</p>
-                                <p className="text-2xl font-semibold text-gray-900">{stats.totalDownloads}</p>
-                            </div>
-                        </div>
+                    <div className="w-full">
+                        <Card className="text-center h-full">
+                            <div className="text-2xl font-bold text-purple-500 mb-2">⬇️</div>
+                            <div className="text-600 mb-1">Tổng Lượt tải</div>
+                            <div className="text-2xl font-semibold">{stats.totalDownloads}</div>
+                        </Card>
                     </div>
                 </div>
 
-                <div className="bg-white shadow rounded-lg">
-                    <div className="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                        <h1 className="text-2xl font-bold text-gray-900">Admin - Quản lý Ứng dụng</h1>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={handleExport}
-                                disabled={apps.length === 0 || loading}
-                                className="btn px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                📊 Export CSV
-                            </button>
-                            <button onClick={fetchApps} disabled={loading} className="btn px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                                {loading ? '🔄 Đang tải...' : '🔄 Làm mới'}
-                            </button>
-                        </div>
-                    </div>
+                <Panel className="mt-4">
+                    <Toolbar start={toolbarStartContent} end={toolbarEndContent} className="mb-4" />
 
-                    {/* Filters and Bulk Actions */}
-                    <div className="px-6 py-4 border-b border-gray-200">
-                        <div className="flex flex-col lg:flex-row gap-4 justify-between">
-                            <form onSubmit={handleSearch} className="flex-1 max-w-md">
-                                <div className="flex">
-                                    <input
-                                        type="text"
-                                        placeholder="Tìm kiếm theo tên app, bundle ID, app ID, phiên bản..."
-                                        value={search}
-                                        onChange={(e) => setSearch(e.target.value)}
-                                        className="flex-1 px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-black"
-                                    />
-                                    <button type="submit" className="btn px-4 py-2 bg-blue-600 text-white rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
-                                        Tìm
-                                    </button>
-                                </div>
-                            </form>
-
-                            <div className="flex flex-wrap gap-2">
-                                {/* Status Filter */}
-                                <div className="flex gap-1">
-                                    {['all', 'processing', 'active', 'expired', 'disabled', 'failed'].map((status) => (
-                                        <button
-                                            key={status}
-                                            onClick={() => handleStatusFilter(status)}
-                                            className={`btn px-3 py-2 rounded-md text-sm font-medium transition-colors ${statusFilter === status ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-                                        >
-                                            {getStatusText(status)}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                {/* Bulk Actions */}
-                                {selectedApps.length > 0 && (
-                                    <div className="flex gap-2 ml-4 pl-4 border-l border-gray-300 justify-center items-center">
-                                        <span className="px-3 py-2 text-sm text-gray-600">{selectedApps.length} đã chọn</span>
-                                        <button
-                                            onClick={handleBulkDelete}
-                                            disabled={actionLoading === 'bulk-delete'}
-                                            className="btn px-3 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors"
-                                        >
-                                            {actionLoading === 'bulk-delete' ? 'Đang xóa...' : 'Xóa đã chọn'}
-                                        </button>
-                                    </div>
-                                )}
+                    {/* Filters */}
+                    <div className="flex flex-column lg:flex-row gap-3 mb-4 align-items-end">
+                        <div className="flex-1">
+                            <label className="block text-sm font-medium mb-2">Tìm kiếm</label>
+                            <div className="p-inputgroup">
+                                <InputText value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm kiếm theo tên app, bundle ID, app ID, phiên bản..." onKeyPress={(e) => e.key === 'Enter' && handleSearch(e)} />
+                                <Button icon="pi pi-search" onClick={handleSearch} />
                             </div>
                         </div>
-                    </div>
 
-                    {/* Enhanced Table */}
-                    <div className="overflow-x-auto">
-                        {loading ? (
-                            <div className="flex justify-center items-center py-12">
-                                <div className="flex flex-col items-center gap-3">
-                                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-                                    <p className="text-gray-600">Đang tải dữ liệu...</p>
-                                </div>
-                            </div>
-                        ) : apps.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                                <div className="text-6xl mb-4">📱</div>
-                                <h3 className="text-lg font-medium mb-2">Không có ứng dụng nào</h3>
-                                <p className="text-sm">{search || statusFilter !== 'all' ? 'Không tìm thấy ứng dụng phù hợp với bộ lọc' : 'Chưa có ứng dụng nào được tải lên'}</p>
-                            </div>
-                        ) : (
-                            <div className="block md:hidden">
-                                {/* Mobile Card View */}
-                                <div className="space-y-4 p-4">
-                                    {sortedApps.map((app) => (
-                                        <div key={app.id} className={`bg-white border rounded-lg p-4 ${selectedApps.includes(app.id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}`}>
-                                            <div className="flex items-start justify-between mb-3">
-                                                <div className="flex items-center gap-3">
-                                                    <input type="checkbox" checked={selectedApps.includes(app.id)} onChange={() => handleSelectApp(app.id)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                                                    {app.iconUrl && (
-                                                        <img
-                                                            className="h-12 w-12 rounded-lg border border-gray-200"
-                                                            src={app.iconUrl}
-                                                            alt="App icon"
-                                                            onError={(e) => {
-                                                                e.currentTarget.style.display = 'none';
-                                                            }}
-                                                        />
-                                                    )}
-                                                    <div className="flex flex-col items-start justify-center">
-                                                        <h3 className="font-medium text-gray-900">{app.displayName || app.appName}</h3>
-                                                        <p className="text-sm text-gray-600">{app.bundleId}</p>
-                                                        <p className="text-sm text-gray-500">
-                                                            Phiên bản {app.version} ({app.buildNumber})
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                                {getStatusBadge(app.status)}
-                                            </div>
+                        <div>
+                            <label className="block text-sm font-medium mb-2">Trạng thái</label>
+                            <Dropdown
+                                value={statusFilter}
+                                options={statusOptions}
+                                onChange={(e) => {
+                                    setStatusFilter(e.value);
+                                    setPagination({ ...pagination, page: 1 });
+                                }}
+                                className="w-12rem"
+                            />
+                        </div>
 
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-gray-500">Lượt tải:</span>
-                                                    <span className={app.downloadCount >= (app.maxDownloads || Infinity) ? 'text-red-600 font-medium' : ''}>
-                                                        {app.downloadCount}/{app.maxDownloads || '∞'}
-                                                    </span>
-                                                </div>
-
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-gray-500">Kích thước:</span>
-                                                    <span>{StorageUtils.formatFileSize(parseInt(app.fileSize))}</span>
-                                                </div>
-
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-gray-500">Tạo lúc:</span>
-                                                    <span>{formatRelativeTime(app.createdAt)}</span>
-                                                </div>
-
-                                                {app.expiresAt && (
-                                                    <div className="flex justify-between text-sm">
-                                                        <span className="text-gray-500">Hết hạn:</span>
-                                                        <span className={isExpired(app.expiresAt) ? 'text-red-600 font-medium' : isExpiredSoon(app.expiresAt) ? 'text-yellow-600 font-medium' : ''}>
-                                                            {isExpired(app.expiresAt) ? 'Đã hết hạn' : isExpiredSoon(app.expiresAt) ? 'Sắp hết hạn' : formatRelativeTime(app.expiresAt)}
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-gray-200">
-                                                <button onClick={() => startEdit(app)} className="btn px-2 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                                                    Sửa
-                                                </button>
-                                                <button onClick={() => handleDownload(app)} className="btn px-2 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700 disabled:opacity-50 transition-colors">
-                                                    Tải
-                                                </button>
-                                                <Link href={`/app/${app.appId}`} target="_blank" rel="noopener noreferrer" className="btn px-2 py-2 bg-purple-600 text-white rounded-md text-sm font-medium hover:bg-purple-700">
-                                                    Xem
-                                                </Link>
-                                                <button
-                                                    onClick={() => handleDelete(app.appId)}
-                                                    disabled={actionLoading === app.appId}
-                                                    className="btn px-2 py-2 bg-red-600 text-white rounded-md text-sm font-medium hover:bg-red-700 disabled:opacity-50"
-                                                >
-                                                    {actionLoading === app.appId ? 'Đang xóa...' : 'Xóa'}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
+                        {selectedApps.length > 0 && (
+                            <div>
+                                <label className="block text-sm font-medium mb-2">Thao tác hàng loạt</label>
+                                <div className="flex gap-2">
+                                    <Button label={`${selectedApps.length} đã chọn`} severity="secondary" size="small" disabled />
+                                    <Button label="Xóa đã chọn" icon="pi pi-trash" severity="danger" onClick={handleBulkDelete} loading={actionLoading === 'bulk-delete'} />
                                 </div>
                             </div>
                         )}
-
-                        {/* Desktop Table View */}
-                        {!loading && apps.length > 0 && (
-                            <table className="min-w-full divide-y divide-gray-200 hidden md:table">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left">
-                                            <input type="checkbox" checked={selectedApps.length === apps.length && apps.length > 0} onChange={handleSelectAll} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('appName')}>
-                                            <div className="flex items-center gap-1">Ứng dụng {getSortIcon('appName')}</div>
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('version')}>
-                                            <div className="flex items-center gap-1">Phiên bản {getSortIcon('version')}</div>
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('status')}>
-                                            <div className="flex items-center gap-1">Trạng thái {getSortIcon('status')}</div>
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('downloadCount')}>
-                                            <div className="flex items-center gap-1">Lượt tải {getSortIcon('downloadCount')}</div>
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('expiresAt')}>
-                                            <div className="flex items-center gap-1">Hết hạn {getSortIcon('expiresAt')}</div>
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => handleSort('createdAt')}>
-                                            <div className="flex items-center gap-1">Ngày tạo {getSortIcon('createdAt')}</div>
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {sortedApps.map((app) => (
-                                        <tr key={app.id} className={`hover:bg-gray-50 transition-colors ${selectedApps.includes(app.appId) ? 'bg-blue-50' : ''}`} onClick={() => handleSelectApp(app.appId)}>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <input type="checkbox" checked={selectedApps.includes(app.appId)} onChange={() => handleSelectApp(app.appId)} className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="flex items-center">
-                                                    {app.iconUrl && (
-                                                        <img
-                                                            className="h-12 w-12 rounded-lg mr-4 border border-gray-200"
-                                                            src={app.iconUrl}
-                                                            alt="App icon"
-                                                            onError={(e) => {
-                                                                e.currentTarget.style.display = 'none';
-                                                            }}
-                                                        />
-                                                    )}
-                                                    <div>
-                                                        <div className="text-sm font-medium text-gray-900 max-w-xs truncate" title={app.appName}>
-                                                            {app.appName}
-                                                        </div>
-                                                        <div className="text-sm text-gray-500 max-w-xs truncate" title={app.bundleId}>
-                                                            {app.bundleId}
-                                                        </div>
-                                                        <div className="text-xs text-gray-400 font-mono">{app.appId}</div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="text-sm text-gray-900">{app.version}</div>
-                                                <div className="text-sm text-gray-500">Build {app.buildNumber}</div>
-                                                <div className="text-xs text-gray-400">{StorageUtils.formatFileSize(parseInt(app.fileSize))}</div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                {editingApp === app.appId ? (
-                                                    <select
-                                                        value={editData.status}
-                                                        onChange={(e) => setEditData({ ...editData, status: e.target.value })}
-                                                        className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 text-black"
-                                                        disabled={actionLoading === app.appId}
-                                                    >
-                                                        <option value="processing">{getStatusText('processing')}</option>
-                                                        <option value="active">{getStatusText('active')}</option>
-                                                        <option value="disabled">{getStatusText('disabled')}</option>
-                                                        <option value="expired">{getStatusText('expired')}</option>
-                                                    </select>
-                                                ) : (
-                                                    getStatusBadge(app.status)
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                {editingApp === app.appId ? (
-                                                    <input
-                                                        type="number"
-                                                        value={editData.maxDownloads}
-                                                        onChange={(e) => setEditData({ ...editData, maxDownloads: e.target.value })}
-                                                        placeholder="Không giới hạn"
-                                                        className="text-sm border border-gray-300 rounded px-2 py-1 w-24 focus:ring-2 focus:ring-blue-500 text-black"
-                                                        disabled={actionLoading === app.appId}
-                                                    />
-                                                ) : (
-                                                    <div className="text-sm text-gray-900">
-                                                        <span className={app.downloadCount >= (app.maxDownloads || Infinity) ? 'text-red-600 font-medium' : ''}>{app.downloadCount}</span>/{app.maxDownloads || '∞'}
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                {editingApp === app.appId ? (
-                                                    <input
-                                                        type="datetime-local"
-                                                        value={editData.expiresAt}
-                                                        onChange={(e) => setEditData({ ...editData, expiresAt: e.target.value })}
-                                                        className="text-sm border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 text-black"
-                                                        disabled={actionLoading === app.appId}
-                                                    />
-                                                ) : (
-                                                    <div className={`text-sm ${isExpired(app.expiresAt) ? 'text-red-600 font-medium' : isExpiredSoon(app.expiresAt) ? 'text-yellow-600 font-medium' : 'text-gray-500'}`}>
-                                                        {app.expiresAt ? (
-                                                            <div>
-                                                                <div>{formatDate(app.expiresAt)}</div>
-                                                                <div className="text-xs">{isExpired(app.expiresAt) ? 'Đã hết hạn' : isExpiredSoon(app.expiresAt) ? 'Sắp hết hạn' : 'Còn hiệu lực'}</div>
-                                                            </div>
-                                                        ) : (
-                                                            'Không giới hạn'
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                <div>{formatDate(app.createdAt)}</div>
-                                                <div className="text-xs text-gray-400">{formatRelativeTime(app.createdAt)}</div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                {editingApp === app.appId ? (
-                                                    <div className="flex gap-2">
-                                                        <button onClick={saveEdit} disabled={actionLoading === app.appId} className="btn text-green-600 hover:text-green-900 disabled:opacity-50 transition-colors">
-                                                            {actionLoading === app.appId ? 'Đang lưu...' : 'Lưu'}
-                                                        </button>
-                                                        <button onClick={cancelEdit} disabled={actionLoading === app.appId} className="btn text-gray-600 hover:text-gray-900 disabled:opacity-50 transition-colors">
-                                                            Hủy
-                                                        </button>
-                                                    </div>
-                                                ) : (
-                                                    <div className="flex gap-2 flex-wrap">
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.preventDefault();
-                                                                startEdit(app);
-                                                            }}
-                                                            className="btn text-blue-600 hover:text-blue-900 transition-colors"
-                                                        >
-                                                            Sửa
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.preventDefault();
-                                                                handleDownload(app);
-                                                            }}
-                                                            className="btn text-green-600 hover:text-green-900 transition-colors"
-                                                        >
-                                                            Tải
-                                                        </button>
-                                                        <Link href={`/app/${app.appId}`} target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-900 transition-colors">
-                                                            Xem
-                                                        </Link>
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.preventDefault();
-                                                                handleDelete(app.appId);
-                                                            }}
-                                                            disabled={actionLoading === app.appId}
-                                                            className="btn text-red-600 hover:text-red-900 disabled:opacity-50 transition-colors"
-                                                        >
-                                                            {actionLoading === app.appId ? 'Đang xóa...' : 'Xóa'}
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )}
                     </div>
 
-                    {/* Enhanced Pagination */}
+                    {/* Data Table */}
+                    {loading ? (
+                        <div className="flex justify-content-center align-items-center p-8">
+                            <div className="text-center">
+                                <ProgressSpinner style={{ width: '50px', height: '50px' }} />
+                                <div className="mt-3">Đang tải dữ liệu...</div>
+                            </div>
+                        </div>
+                    ) : (
+                        <DataTable
+                            value={apps}
+                            selection={selectedApps}
+                            onSelectionChange={(e: { value: App[] }) => setSelectedApps(e.value as any)}
+                            dataKey="appId"
+                            paginator={false}
+                            emptyMessage="Không có ứng dụng nào"
+                            // responsiveLayout="scroll"
+                            scrollable
+                            className="p-datatable-sm"
+                            selectionMode="multiple"
+                        >
+                            <Column selectionMode="multiple" headerStyle={{ width: '3rem' }} />
+                            <Column field="appName" header="Ứng dụng" body={appTemplate} />
+                            <Column field="version" header="Phiên bản" body={versionTemplate} />
+                            <Column field="status" header="Trạng thái" body={statusTemplate} />
+                            <Column field="downloadCount" header="Lượt tải" body={downloadsTemplate} />
+                            <Column field="expiresAt" header="Hết hạn" body={expiresTemplate} />
+                            <Column field="createdAt" header="Ngày tạo" body={createdTemplate} />
+                            <Column header="Thao tác" body={actionsTemplate} style={{ width: '12rem' }} />
+                        </DataTable>
+                    )}
+
+                    {/* Pagination */}
                     {!loading && apps.length > 0 && pagination.totalPages > 1 && (
-                        <div className="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-                            <div className="text-sm text-gray-700">
-                                Hiển thị <span className="font-medium">{(pagination.page - 1) * pagination.limit + 1}</span> đến <span className="font-medium">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> trong tổng số{' '}
-                                <span className="font-medium">{pagination.total}</span> kết quả
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setPagination({ ...pagination, page: 1 })}
-                                    disabled={!pagination.hasPrev}
-                                    className="btn px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                >
-                                    ‹‹
-                                </button>
-                                <button
-                                    onClick={() => setPagination({ ...pagination, page: pagination.page - 1 })}
-                                    disabled={!pagination.hasPrev}
-                                    className="btn px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                >
-                                    ‹ Trước
-                                </button>
-
-                                {/* Page Numbers */}
-                                <div className="flex gap-1">
-                                    {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
-                                        let pageNum;
-                                        if (pagination.totalPages <= 5) {
-                                            pageNum = i + 1;
-                                        } else if (pagination.page <= 3) {
-                                            pageNum = i + 1;
-                                        } else if (pagination.page >= pagination.totalPages - 2) {
-                                            pageNum = pagination.totalPages - 4 + i;
-                                        } else {
-                                            pageNum = pagination.page - 2 + i;
-                                        }
-
-                                        return (
-                                            <button
-                                                key={pageNum}
-                                                onClick={() => setPagination({ ...pagination, page: pageNum })}
-                                                className={`btn px-3 py-2 border rounded-md text-sm font-medium transition-colors ${
-                                                    pagination.page === pageNum ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
-                                                }`}
-                                            >
-                                                {pageNum}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-
-                                <button
-                                    onClick={() => setPagination({ ...pagination, page: pagination.page + 1 })}
-                                    disabled={!pagination.hasNext}
-                                    className="btn px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                >
-                                    Sau ›
-                                </button>
-                                <button
-                                    onClick={() => setPagination({ ...pagination, page: pagination.totalPages })}
-                                    disabled={!pagination.hasNext}
-                                    className="btn px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                >
-                                    ››
-                                </button>
-                            </div>
-                        </div>
+                        <Paginator first={(pagination.page - 1) * pagination.limit} rows={pagination.limit} totalRecords={pagination.total} onPageChange={(e) => setPagination({ ...pagination, page: e.page + 1 })} className="mt-4" />
                     )}
+                </Panel>
 
-                    {/* Confirmation Modal */}
-                    {confirmModal.isOpen && (
-                        <div className="fixed inset-0 z-50 overflow-y-auto">
-                            <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                                <div className="fixed inset-0 backdrop-blur bg-opacity-75 transition-opacity" onClick={closeConfirmModal}></div>
-
-                                <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">
-                                    &#8203;
-                                </span>
-
-                                <div className="relative inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-                                    <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                                        <div className="sm:flex sm:items-start">
-                                            <div
-                                                className={`mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full sm:mx-0 sm:h-10 sm:w-10 ${
-                                                    confirmModal.type === 'danger' ? 'bg-red-100' : confirmModal.type === 'warning' ? 'bg-yellow-100' : 'bg-blue-100'
-                                                }`}
-                                            >
-                                                <span className={`text-xl ${confirmModal.type === 'danger' ? 'text-red-600' : confirmModal.type === 'warning' ? 'text-yellow-600' : 'text-blue-600'}`}>
-                                                    {confirmModal.type === 'danger' ? '⚠️' : confirmModal.type === 'warning' ? '⚠️' : 'ℹ️'}
-                                                </span>
-                                            </div>
-                                            <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                                                <h3 className="text-lg leading-6 font-medium text-gray-900">{confirmModal.title}</h3>
-                                                <div className="mt-2">
-                                                    <p className="text-sm text-gray-500">{confirmModal.message}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                                        <button
-                                            type="button"
-                                            onClick={confirmModal.confirmAction}
-                                            disabled={actionLoading !== null}
-                                            className={`btn w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm transition-colors disabled:opacity-50 ${
-                                                confirmModal.type === 'danger' ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
-                                            }`}
-                                        >
-                                            {actionLoading ? 'Đang xử lý...' : confirmModal.confirmText}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={closeConfirmModal}
-                                            disabled={actionLoading !== null}
-                                            className="btn mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm transition-colors disabled:opacity-50"
-                                        >
-                                            Hủy
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                {/* Edit Dialog */}
+                <Dialog
+                    header="Chỉnh sửa ứng dụng"
+                    visible={editDialogVisible}
+                    style={{ width: '450px' }}
+                    onHide={() => setEditDialogVisible(false)}
+                    footer={
+                        <div>
+                            <Button label="Hủy" icon="pi pi-times" outlined onClick={() => setEditDialogVisible(false)} />
+                            <Button label="Lưu" icon="pi pi-check" onClick={saveEdit} loading={actionLoading === editingApp} />
                         </div>
-                    )}
+                    }
+                >
+                    <div className="field">
+                        <label htmlFor="status" className="font-bold">
+                            Trạng thái
+                        </label>
+                        <Dropdown
+                            id="status"
+                            value={editData.status}
+                            options={[
+                                { label: 'Đang xử lý', value: 'processing' },
+                                { label: 'Đang hoạt động', value: 'active' },
+                                { label: 'Đã tắt', value: 'disabled' },
+                                { label: 'Đã hết hạn', value: 'expired' }
+                            ]}
+                            onChange={(e) => setEditData({ ...editData, status: e.value })}
+                            className="w-full"
+                        />
+                    </div>
+
+                    <div className="field">
+                        <label htmlFor="maxDownloads" className="font-bold">
+                            Số lượt tải tối đa
+                        </label>
+                        <InputNumber id="maxDownloads" value={editData.maxDownloads} onValueChange={(e) => setEditData({ ...editData, maxDownloads: e.value ?? null })} placeholder="Không giới hạn" className="w-full" />
+                    </div>
+
+                    <div className="field">
+                        <label htmlFor="expiresAt" className="font-bold">
+                            Ngày hết hạn
+                        </label>
+                        <Calendar id="expiresAt" value={editData.expiresAt} onChange={(e) => setEditData({ ...editData, expiresAt: e.value as Date })} showTime dateFormat="dd/mm/yy" className="w-full" />
+                    </div>
+                </Dialog>
+
+                {/* Footer */}
+                <div className="mt-12 text-center">
+                    <Link href="/">
+                        <Button icon="pi pi-arrow-left" label="Về trang chủ" text className="text-gray-600 hover:text-gray-900" />
+                    </Link>
                 </div>
-            </div>
-            {/* Footer */}
-            <div className="mt-12 text-center">
-                <Link href="/" className="inline-flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors">
-                    <span>←</span>
-                    <span>Về trang chủ</span>
-                </Link>
             </div>
         </div>
     );

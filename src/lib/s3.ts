@@ -1,4 +1,5 @@
 // lib/s3.ts
+import 'dotenv/config';
 import * as Minio from 'minio';
 
 // S3 Configuration with build-time safety
