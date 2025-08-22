@@ -1,11 +1,12 @@
-import { prisma } from '@/lib/prisma';
-import { redisConnection } from '@/lib/redis';
-import { S3ServiceWorker } from '@/lib/s3';
-import { UrlUtils } from '@/lib/utils';
-import { QUEUE_NAMES } from '@/types/queue';
 import { Job, Worker } from 'bullmq';
 import { config } from 'dotenv';
 import { resolve } from 'path';
+
+import { prisma } from '../lib/prisma';
+import { redisConnection } from '../lib/redis';
+import { S3ServiceWorker } from '../lib/s3';
+import { UrlUtils } from '../lib/utils';
+import { QUEUE_NAMES } from '../types/queue';
 
 // // Load environment variables
 config({ path: resolve(process.cwd(), '.env') });
@@ -114,7 +115,7 @@ export async function scheduleExpiredAppsCleanup() {
         console.log(`🔍 Found ${expiredApps.length} expired apps to cleanup`);
 
         // Thêm cleanup jobs cho từng app hết hạn
-        const { cleanupQueue } = await import('@/lib/queue');
+        const { cleanupQueue } = await import('../lib/queue');
         for (const app of expiredApps) {
             await cleanupQueue.add(
                 'cleanup-expired',

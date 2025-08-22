@@ -1,8 +1,9 @@
-import { api } from '@/lib/axios-client';
 import { config } from 'dotenv';
 import { Client as MinioClient } from 'minio';
 import { resolve } from 'path';
 import { Readable } from 'stream';
+
+import { api } from './axios-client';
 
 // // Load environment variables
 config({ path: resolve(process.cwd(), '.env') });

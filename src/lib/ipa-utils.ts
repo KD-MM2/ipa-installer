@@ -1,10 +1,11 @@
-import { FileUtils } from '@/lib/file-utils';
-import { IpaMetadata, ProcessedIpaData } from '@/types/queue';
 import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import * as plist from 'plist';
 import sharp from 'sharp';
+
+import { IpaMetadata, ProcessedIpaData } from '../types/queue';
+import { FileUtils } from './file-utils';
 
 // Function để giải nén và extract metadata từ file IPA
 export async function extractIpaMetadata(ipaFilePath: string): Promise<ProcessedIpaData> {

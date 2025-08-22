@@ -1,13 +1,14 @@
-import { convertCgbiToStandardPng } from '@/lib/cgbi2png';
-import { FileUtils } from '@/lib/file-utils';
-import { extractIpaMetadata, generatePlistContent, optimizeIcon, validateIpaFile } from '@/lib/ipa-utils';
-import { prisma } from '@/lib/prisma';
-import { redisConnection } from '@/lib/redis';
-import { S3ServiceWorker } from '@/lib/s3';
-import { UrlUtils } from '@/lib/utils';
-import { IpaProcessJobData, JobProgress, QUEUE_NAMES } from '@/types/queue';
 import { Job, Worker } from 'bullmq';
 import fs from 'fs';
+
+import { convertCgbiToStandardPng } from '../lib/cgbi2png';
+import { FileUtils } from '../lib/file-utils';
+import { extractIpaMetadata, generatePlistContent, optimizeIcon, validateIpaFile } from '../lib/ipa-utils';
+import { prisma } from '../lib/prisma';
+import { redisConnection } from '../lib/redis';
+import { S3ServiceWorker } from '../lib/s3';
+import { UrlUtils } from '../lib/utils';
+import { IpaProcessJobData, JobProgress, QUEUE_NAMES } from '../types/queue';
 
 const s3Service = new S3ServiceWorker();
 

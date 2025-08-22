@@ -3,12 +3,13 @@
  * Worker process để chạy tất cả các workers cho queue system
  * Chạy file này để start workers: `node workers/index.js`
  */
-import { checkRedisConnection, closeRedisConnection } from '@/lib/redis';
-import '@/workers/cleanup-worker';
-import { scheduleExpiredAppsCleanup } from '@/workers/cleanup-worker';
-import '@/workers/ipa-process-worker';
 import { config } from 'dotenv';
 import { resolve } from 'path';
+
+import { checkRedisConnection, closeRedisConnection } from '../lib/redis';
+import './cleanup-worker';
+import { scheduleExpiredAppsCleanup } from './cleanup-worker';
+import './ipa-process-worker';
 
 // // Load environment variables
 config({ path: resolve(process.cwd(), '.env') });

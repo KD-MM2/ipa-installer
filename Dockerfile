@@ -10,7 +10,6 @@ FROM base AS deps
 RUN corepack enable pnpm
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm i --frozen-lockfile
-RUN pnpx prisma generate
 
 # ----------------------
 # builder: build app
@@ -21,6 +20,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+RUN pnpx prisma generate
 RUN pnpm run build
 RUN pnpm exec tsc -p tsconfig.worker.json
 
@@ -28,7 +28,7 @@ RUN pnpm exec tsc -p tsconfig.worker.json
 # runner: final image
 # ----------------------
 FROM base AS runner
-RUN apk add --no-cache supervisor
+RUN apk add --no-cache supervisor zip unzip
 RUN addgroup --system --gid 1001 nodejs \
     && adduser --system --uid 1001 nextjs
 
@@ -54,5 +54,4 @@ COPY supervisord.conf /etc/supervisord.conf
 USER nextjs
 EXPOSE 3000
 
-CMD ["npm", "run", "start:prod"]
-# CMD ["npx", "concurrently", "'cd /app && node server.js'", "'cd /app && node worker/workers/index.js'"]
+CMD ["supervisord", "-c", "/etc/supervisord.conf"]
