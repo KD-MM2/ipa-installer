@@ -1,3 +1,4 @@
+import { FileUtils } from '@/lib/file-utils';
 import { IpaMetadata, ProcessedIpaData } from '@/types/queue';
 import { execSync } from 'child_process';
 import fs from 'fs';
@@ -24,10 +25,8 @@ export async function extractIpaMetadata(ipaFilePath: string): Promise<Processed
     try {
         console.log('📦 Starting IPA metadata extraction...');
 
-        // Clean up any existing temp directory
-        if (fs.existsSync(tempDir)) {
-            execSync(`rm -rf "${tempDir}"`, { cwd: path.dirname(normalizedPath) });
-        }
+        // Create temp directory using shared utility
+        FileUtils.createTempDirectory(path.dirname(normalizedPath));
 
         // Extract IPA file using unzip
         console.log('� Extracting IPA file...');
@@ -121,15 +120,9 @@ export async function extractIpaMetadata(ipaFilePath: string): Promise<Processed
         console.error('❌ Error extracting IPA metadata:', error.message);
         throw new Error(`Failed to extract IPA metadata: ${error.message}`);
     } finally {
-        // Clean up temp directory
-        if (fs.existsSync(tempDir)) {
-            try {
-                execSync(`rm -rf "${tempDir}"`, { cwd: path.dirname(normalizedPath) });
-                console.log('🧹 Cleaned up temporary files');
-            } catch (cleanupError) {
-                console.warn('⚠️ Failed to cleanup temp directory:', cleanupError);
-            }
-        }
+        // Clean up temp directory using shared utility
+        FileUtils.safeDeleteDirectory(tempDir);
+        console.log('🧹 Cleaned up temporary files');
     }
 }
 
@@ -207,41 +200,21 @@ export async function optimizeIcon(iconBuffer: Buffer): Promise<Buffer> {
     }
 }
 
-// Function để validate file IPA
+// Function để validate file IPA - Uses shared FileUtils
 export function validateIpaFile(filePath: string): boolean {
     try {
-        // Kiểm tra input
-        if (!filePath || typeof filePath !== 'string') {
-            console.error('Invalid file path provided');
+        // Basic validation using shared utility
+        if (!FileUtils.validateFile(filePath, 500 * 1024 * 1024)) {
+            // 500MB max
             return false;
         }
 
-        // Normalize and resolve the path
+        // Normalize path
         const normalizedPath = path.resolve(filePath);
 
-        // Kiểm tra file tồn tại
-        if (!fs.existsSync(normalizedPath)) {
-            console.error('IPA file does not exist:', normalizedPath);
-            return false;
-        }
-
-        // Kiểm tra extension
+        // Check IPA extension
         if (!normalizedPath.toLowerCase().endsWith('.ipa')) {
             console.error('File is not an IPA:', normalizedPath);
-            return false;
-        }
-
-        // Kiểm tra kích thước file (tối đa 500MB)
-        const stats = fs.statSync(normalizedPath);
-        const maxSize = 500 * 1024 * 1024; // 500MB
-        if (stats.size > maxSize) {
-            console.error('IPA file too large:', stats.size, 'max:', maxSize);
-            return false;
-        }
-
-        // Kiểm tra file không rỗng
-        if (stats.size === 0) {
-            console.error('IPA file is empty');
             return false;
         }
 

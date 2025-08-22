@@ -1,8 +1,6 @@
-import { PrismaClient } from '@/../prisma/prisma';
-import { UrlUtils } from '@/lib/url-utils';
+import { prisma } from '@/lib/prisma';
+import { UrlUtils } from '@/lib/utils';
 import { NextRequest, NextResponse } from 'next/server';
-
-const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
     try {

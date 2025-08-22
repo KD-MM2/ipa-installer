@@ -1,0 +1,10 @@
+{
+    "name": "ipa-installer",
+    "options": {
+        "allow-unauthenticated": true,
+        "memory": "4096Mi",
+        "cpu": "4",
+        "port": 3000,
+        "http2": false
+    }
+}

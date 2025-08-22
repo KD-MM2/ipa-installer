@@ -1,11 +1,15 @@
-import { PrismaClient } from '@/../prisma/prisma';
-import { S3ServiceWorker } from '@/lib/S3ServiceWorker';
+import { prisma } from '@/lib/prisma';
 import { redisConnection } from '@/lib/redis';
-import { UrlUtils } from '@/lib/url-utils';
+import { S3ServiceWorker } from '@/lib/s3';
+import { UrlUtils } from '@/lib/utils';
 import { QUEUE_NAMES } from '@/types/queue';
 import { Job, Worker } from 'bullmq';
+import { config } from 'dotenv';
+import { resolve } from 'path';
 
-const prisma = new PrismaClient();
+// // Load environment variables
+config({ path: resolve(process.cwd(), '.env') });
+
 const s3Service = new S3ServiceWorker();
 
 interface CleanupJobData {

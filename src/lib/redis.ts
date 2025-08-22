@@ -1,5 +1,10 @@
-import 'dotenv/config';
+// import 'dotenv/config';
+import { config } from 'dotenv';
+import { resolve } from 'path';
 import { createClient } from 'redis';
+
+// // Load environment variables
+config({ path: resolve(process.cwd(), '.env') });
 
 // Cấu hình Redis connection
 const redisConfig = {
@@ -12,7 +17,9 @@ const redisConfig = {
 };
 
 // Tạo Redis client cho BullMQ
-export const redisClient = createClient(redisConfig);
+const globalForRedis = globalThis as unknown as { redisClient: ReturnType<typeof createClient> };
+export const redisClient = globalForRedis.redisClient || createClient(redisConfig);
+if (process.env.NODE_ENV !== 'production') globalForRedis.redisClient = redisClient;
 
 // Export cấu hình để sử dụng trong BullMQ
 export const redisConnection = {

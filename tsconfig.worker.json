@@ -1,0 +1,18 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "outDir": "worker", // compiled output
+        "noEmit": false, // enable emitting .js files
+        "module": "commonjs", // safer for Node.js runtime
+        "target": "es2019", // modern Node target
+        "lib": [
+            "esnext"
+        ], // no DOM needed
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "isolatedModules": false, // disable to allow TS compiler to handle emit
+    },
+    "include": [
+        "src/workers/**/*"
+    ]
+}

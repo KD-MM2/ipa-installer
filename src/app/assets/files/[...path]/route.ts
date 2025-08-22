@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ path:
             contentType = 'application/octet-stream';
             contentDisposition = `attachment; filename="${filename}"`;
         } else if (filename.toLowerCase().endsWith('.plist')) {
-            contentType = 'application/xml';
+            contentType = 'text/xml';
             contentDisposition = 'inline'; // plist files should be inline for iOS installation
         }
 

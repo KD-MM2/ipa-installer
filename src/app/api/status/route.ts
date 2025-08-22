@@ -1,11 +1,9 @@
 // src/app/api/status/route.ts
-import { PrismaClient } from '@/../prisma/prisma';
+import { prisma } from '@/lib/prisma';
 import { getJobStatus } from '@/lib/queue';
-import { UrlUtils } from '@/lib/url-utils';
+import { UrlUtils } from '@/lib/utils';
 import { QUEUE_NAMES } from '@/types/queue';
 import { NextRequest, NextResponse } from 'next/server';
-
-const prisma = new PrismaClient();
 
 export async function GET(request: NextRequest) {
     try {

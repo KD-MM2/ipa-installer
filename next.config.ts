@@ -1,7 +1,10 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-    /* config options here */
+    output: 'standalone',
+    env: {
+        NEXT_PHASE: process.env.NEXT_PHASE
+    }
 };
 
 export default nextConfig;

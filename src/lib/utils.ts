@@ -1,14 +1,34 @@
-/**
- * Utility functions for generating URLs based on appId and filenames
- */
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:3000';
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-const MINIO_BASE_URL = process.env.MINIO_BASE_URL || 'http://localhost:9000';
-const BUCKET_NAME = process.env.BUCKET_NAME || 'ipa-installer';
+export const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+export const getFileExtension = (filename: string): string => {
+    return filename.slice(((filename.lastIndexOf('.') - 1) >>> 0) + 2);
+};
+
+export const isValidIPA = (file: File): boolean => {
+    return file.type === 'application/octet-stream' && file.name.toLowerCase().endsWith('.ipa');
+};
+
+export const getFileType = (filename: string): 'ipa' | 'icon' | 'plist' | 'other' => {
+    const extension = getFileExtension(filename).toLowerCase();
+    if (extension === 'ipa') return 'ipa';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) return 'icon';
+    if (extension === 'plist') return 'plist';
+    return 'other';
+};
 
 export class UrlUtils {
     /**
-     * Generate IPA download URL
+     * Generate asset URLs for app access (proxy routes)
      */
     static getIpaUrl(appId: string, originalFilename: string): string {
         return `${BASE_URL}/assets/files/apps/${appId}/${originalFilename}`;
@@ -42,22 +62,6 @@ export class UrlUtils {
      */
     static getAppDetailUrl(appId: string): string {
         return `${BASE_URL}/app/${appId}`;
-    }
-
-    /**
-     * Generate direct IPA URL from MinIO/S3
-     */
-    static getDirectIpaUrl(appId: string, originalFilename: string): string {
-        return `${MINIO_BASE_URL}/${BUCKET_NAME}/apps/${appId}/${originalFilename}`;
-    }
-
-    static getDirectIconUrl(appId: string, hasIcon: boolean): string | null {
-        if (!hasIcon) return null;
-        return `${MINIO_BASE_URL}/${BUCKET_NAME}/apps/${appId}/icon.png`;
-    }
-
-    static getDirectPlistUrl(appId: string): string {
-        return `${MINIO_BASE_URL}/${BUCKET_NAME}/apps/${appId}/install.plist`;
     }
 
     /**

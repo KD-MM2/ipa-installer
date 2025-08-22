@@ -1,7 +1,7 @@
 'use client';
 
 import { api } from '@/lib/axios-client';
-import { StorageUtils } from '@/lib/storage-utils';
+import { formatFileSize } from '@/lib/utils';
 import Link from 'next/link';
 
 import { Button } from 'primereact/button';
@@ -229,7 +229,7 @@ export default function AdminPage() {
             Status: app.status,
             Downloads: app.downloadCount,
             'Max Downloads': app.maxDownloads || 'Unlimited',
-            'File Size': StorageUtils.formatFileSize(parseInt(app.fileSize)),
+            'File Size': formatFileSize(parseInt(app.fileSize)),
             'Created At': formatDate(app.createdAt),
             'Expires At': app.expiresAt ? formatDate(app.expiresAt) : 'Never'
         }));
@@ -413,7 +413,7 @@ export default function AdminPage() {
         <div>
             <div>{rowData.version}</div>
             <div className="text-sm text-600">Build {rowData.buildNumber}</div>
-            <div className="text-xs text-400">{StorageUtils.formatFileSize(parseInt(rowData.fileSize))}</div>
+            <div className="text-xs text-400">{formatFileSize(parseInt(rowData.fileSize))}</div>
         </div>
     );
 

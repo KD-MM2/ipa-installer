@@ -7,9 +7,11 @@ import { checkRedisConnection, closeRedisConnection } from '@/lib/redis';
 import '@/workers/cleanup-worker';
 import { scheduleExpiredAppsCleanup } from '@/workers/cleanup-worker';
 import '@/workers/ipa-process-worker';
-import 'dotenv/config';
+import { config } from 'dotenv';
+import { resolve } from 'path';
 
-console.log('🚀 Starting IPA Installer Workers...');
+// // Load environment variables
+config({ path: resolve(process.cwd(), '.env') });
 
 // Kiểm tra kết nối Redis
 async function initializeWorkers() {

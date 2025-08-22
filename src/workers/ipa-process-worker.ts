@@ -1,14 +1,14 @@
-import { PrismaClient } from '@/../prisma/prisma';
-import { S3ServiceWorker } from '@/lib/S3ServiceWorker';
 import { convertCgbiToStandardPng } from '@/lib/cgbi2png';
+import { FileUtils } from '@/lib/file-utils';
 import { extractIpaMetadata, generatePlistContent, optimizeIcon, validateIpaFile } from '@/lib/ipa-utils';
+import { prisma } from '@/lib/prisma';
 import { redisConnection } from '@/lib/redis';
-import { UrlUtils } from '@/lib/url-utils';
+import { S3ServiceWorker } from '@/lib/s3';
+import { UrlUtils } from '@/lib/utils';
 import { IpaProcessJobData, JobProgress, QUEUE_NAMES } from '@/types/queue';
 import { Job, Worker } from 'bullmq';
 import fs from 'fs';
 
-const prisma = new PrismaClient();
 const s3Service = new S3ServiceWorker();
 
 // Worker cho xử lý IPA
@@ -108,14 +108,7 @@ export const ipaProcessWorker = new Worker(
 
             // Bước 6: Dọn dẹp file tạm
             await updateProgress(job, 'Cleaning up...', 95);
-
-            try {
-                if (fs.existsSync(filePath)) {
-                    fs.unlinkSync(filePath);
-                }
-            } catch (cleanupError) {
-                console.warn('Warning: Failed to cleanup temp file:', cleanupError);
-            }
+            FileUtils.cleanupTempFiles([filePath]);
 
             await updateProgress(job, 'Completed', 100);
 
@@ -129,14 +122,8 @@ export const ipaProcessWorker = new Worker(
         } catch (error) {
             console.error(`❌ Error processing IPA for app ${appId}:`, error);
 
-            // Cleanup on error
-            try {
-                if (fs.existsSync(filePath)) {
-                    fs.unlinkSync(filePath);
-                }
-            } catch (cleanupError) {
-                console.warn('Warning: Failed to cleanup temp file on error:', cleanupError);
-            }
+            // Cleanup on error using shared utility
+            FileUtils.cleanupTempFiles([filePath]);
 
             // Update database status to failed
             try {

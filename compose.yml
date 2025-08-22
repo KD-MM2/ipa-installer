@@ -1,0 +1,32 @@
+services:
+    ipa_installer_ts:
+        image: ghcr.io/tailscale/tailscale:latest
+        hostname: ipa-installer
+        environment:
+            - TS_AUTHKEY=tskey-auth-xxx
+            - TS_EXTRA_ARGS=--force-reauth
+            - TS_STATE_DIR=/var/lib/tailscale
+            - TS_SERVE_CONFIG=/config/serve-config.json
+            - TS_USERSPACE=false
+        volumes:
+            - ./state:/var/lib/tailscale
+            - ./serve-config.json:/config/serve-config.json
+        devices:
+            - /dev/net/tun:/dev/net/tun
+        cap_add:
+            - net_admin
+            - sys_module
+        restart: always
+
+    ipa-installer:
+        image: kd-mm2/ipa-installer:0.1.0
+        build:
+            context: .
+            dockerfile: Dockerfile
+        volumes:
+            - ./.env.production:/app/.env
+            - ./data:/app/data
+        network_mode: service:ipa_installer_ts
+        env_file:
+            - ./.env.production
+        restart: always
