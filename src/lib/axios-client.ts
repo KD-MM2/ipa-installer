@@ -3,7 +3,7 @@ import axios from 'axios';
 
 export const api = axios.create({
     baseURL: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
-    timeout: 30000,
+    timeout: 0, // Disable timeout
     headers: {
         'Content-Type': 'application/json'
     }

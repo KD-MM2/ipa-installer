@@ -24,9 +24,13 @@ services:
             context: .
             dockerfile: Dockerfile
         volumes:
-            - ./.env.production:/app/.env
-            - ./data:/app/data
+            - ./.env:/app/.env
+            - ipa_installer_db:/app/data
         network_mode: service:ipa_installer_ts
+        command: ["pnpm", "start:all"]
         env_file:
-            - ./.env.production
+            - ./.env
         restart: always
+
+volumes:
+    ipa_installer_db:
