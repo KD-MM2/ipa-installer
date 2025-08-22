@@ -104,14 +104,7 @@ export const isS3Available = () => {
 
 export const generateProxyUrl = (key: string, type: 'icon' | 'ipa' = 'icon'): string => {
     if (!key) return '';
-
-    let baseUrl: string;
-    // if (typeof window !== 'undefined') {
-    //     baseUrl = window.location.origin;
-    // } else {
-        baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:3000';
-    // }
-
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || 'http://localhost:3000';
     const endpoint = type === 'icon' ? 'icons' : 'files';
     return `${baseUrl}/assets/${endpoint}/${key}`;
 };

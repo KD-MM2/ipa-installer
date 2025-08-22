@@ -54,4 +54,5 @@ COPY supervisord.conf /etc/supervisord.conf
 USER nextjs
 EXPOSE 3000
 
-CMD ["supervisord", "-c", "/etc/supervisord.conf"]
+CMD ["npm", "run", "start:prod"]
+# CMD ["npx", "concurrently", "'cd /app && node server.js'", "'cd /app && node worker/workers/index.js'"]
